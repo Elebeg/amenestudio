@@ -1,0 +1,12 @@
+# fotos originais (10-17 MB cada) — o site usa versões otimizadas
+/folders/
+
+node_modules/
+.next/
+out/
+.vercel/
+.env*
+!.env.example
+*.log
+.DS_Store
+Thumbs.db
