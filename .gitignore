@@ -13,3 +13,11 @@ Thumbs.db
 
 # workspace de execução dos agentes
 /.superpowers/
+
+# next / testes
+/coverage
+*.tsbuildinfo
+next-env.d.ts
+test-results/
+playwright-report/
+/tmp-app/

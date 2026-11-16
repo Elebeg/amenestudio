@@ -1,0 +1,41 @@
+/*
+ * Tipografia (escolha do construtor, Task 1):
+ *  - Display: Cormorant (serifada de alto contraste, elegante para títulos de interiores)
+ *  - Texto: Jost (geométrica leve, limpa e legível em corpo de texto)
+ * Evitadas de propósito: Fraunces e Inter (usadas no protótipo de referência).
+ */
+:root {
+  --background: #f4f0ea;
+  --foreground: #1c1a17;
+  --font-display-stack: var(--font-display), Georgia, serif;
+  --font-text-stack: var(--font-text), system-ui, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+body {
+  min-height: 100vh;
+  color: var(--foreground);
+  background: var(--background);
+  font-family: var(--font-text-stack);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display-stack);
+  font-weight: 400;
+}
