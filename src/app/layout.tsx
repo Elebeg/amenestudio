@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Cormorant, Jost } from "next/font/google";
 import { site } from "@/config/site";
+import { Header } from "@/components/layout/Header";
+import { Footer } from "@/components/layout/Footer";
+import { WhatsAppFab } from "@/components/layout/WhatsAppFab";
 import "./globals.css";
 
 const display = Cormorant({
@@ -22,7 +25,12 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="pt-BR" className={`${display.variable} ${text.variable}`}>
-      <body>{children}</body>
+      <body>
+        <Header />
+        {children}
+        <Footer />
+        <WhatsAppFab visible />
+      </body>
     </html>
   );
 }

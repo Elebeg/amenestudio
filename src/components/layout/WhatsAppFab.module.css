@@ -1,0 +1,2 @@
+.fab { position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 60; padding: 0.875rem 1.25rem; border-radius: 999px; background: var(--accent, #B5651D); color: #fff; text-decoration: none; font-size: 0.875rem; letter-spacing: 0.05em; transition: opacity 0.3s; }
+.hidden { opacity: 0; pointer-events: none; }
