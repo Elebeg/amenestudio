@@ -10,8 +10,6 @@ gsap.registerPlugin(ScrollTrigger)
 /** Escreve --bg/--fg/--muted/--accent/--line em <html> conforme a rolagem do <main>. */
 export function DaylightController() {
   useEffect(() => {
-    const main = document.querySelector('main')
-    if (!main) return
     const root = document.documentElement
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
     // A cor muda mesmo com reduced-motion; apenas sem suavização.
@@ -29,16 +27,31 @@ export function DaylightController() {
       root.style.setProperty('--line', p.line)
     }
 
-    const st = ScrollTrigger.create({
-      trigger: main,
-      start: 'top top',
-      end: 'bottom bottom',
-      onUpdate: (self) => apply(self.progress),
-      onRefresh: (self) => apply(self.progress),
+    let st: ScrollTrigger | undefined
+    // <main> resolvido aqui, a cada setup (e no próximo frame, após a hidratação/remontagens).
+    const setup = () => {
+      const main = document.querySelector('main')
+      if (!main) return
+      st?.kill()
+      st = ScrollTrigger.create({
+        trigger: main,
+        start: 'top top',
+        end: 'bottom bottom',
+        onUpdate: (self) => apply(self.progress),
+        onRefresh: (self) => apply(self.progress),
+      })
+      apply(st.progress)
+      ScrollTrigger.refresh()
+    }
+    setup()
+    const raf = requestAnimationFrame(() => {
+      if (!st || !st.trigger?.isConnected) setup()
+      else ScrollTrigger.refresh()
     })
-    apply(st.progress)
+
     return () => {
-      st.kill()
+      cancelAnimationFrame(raf)
+      st?.kill()
       mq.removeEventListener('change', setSmoothing)
     }
   }, [])

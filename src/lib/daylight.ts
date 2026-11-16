@@ -107,7 +107,9 @@ export function paletteAt(t: number): Palette {
   while (i < DAY_STOPS.length - 2 && x > DAY_STOPS[i + 1].at) i++
   const a = DAY_STOPS[i]
   const b = DAY_STOPS[i + 1]
-  const k = (x - a.at) / (b.at - a.at)
+  const linear = (x - a.at) / (b.at - a.at)
+  // tarde→anoitecer: cruza rápido a faixa de cinza médio (onde o fg precisa ser preto/branco puro)
+  const k = b.name === 'anoitecer' ? easeNight(linear) : linear
 
   const bg = mix(a.palette.bg, b.palette.bg, k)
   const dark = DAY_STOPS[0].palette.fg
@@ -135,4 +137,12 @@ export function paletteAt(t: number): Palette {
     accent,
     line: mix(a.palette.line, b.palette.line, k),
   }
+}
+
+const NIGHT_CENTER = 0.62
+const NIGHT_STEEPNESS = 9
+/** Sigmoide normalizada (0→0, 1→1), mais íngreme em torno do cruzamento do cinza médio. */
+function easeNight(k: number): number {
+  const sig = (v: number) => 1 / (1 + Math.exp(-NIGHT_STEEPNESS * (v - NIGHT_CENTER)))
+  return (sig(k) - sig(0)) / (sig(1) - sig(0))
 }

@@ -24,3 +24,16 @@ describe('daylight', () => {
     expect(contrastRatio('#000000', '#ffffff')).toBeCloseTo(21, 5)
   })
 })
+
+describe('daylight - cruzamento do cinza médio', () => {
+  it('fg puro (#000/#FFF) em no máximo 2% das amostras', () => {
+    let pure = 0
+    let total = 0
+    for (let i = 0; i <= 1000; i++) {
+      const fg = paletteAt(i / 1000).fg.toUpperCase()
+      total++
+      if (fg === '#000000' || fg === '#FFFFFF') pure++
+    }
+    expect(pure / total).toBeLessThanOrEqual(0.02)
+  })
+})
