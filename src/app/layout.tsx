@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Cormorant, Jost } from "next/font/google";
 import { site } from "@/config/site";
+import { DaylightController } from "@/components/daylight/DaylightController";
+import { SmoothScroll } from "@/components/providers/SmoothScroll";
 import "./globals.css";
 
 const display = Cormorant({
@@ -22,7 +24,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="pt-BR" className={`${display.variable} ${text.variable}`}>
-      <body>{children}</body>
+      <body>
+        <SmoothScroll>{children}</SmoothScroll>
+        <DaylightController />
+      </body>
     </html>
   );
 }

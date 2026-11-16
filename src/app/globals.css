@@ -5,8 +5,13 @@
  * Evitadas de propósito: Fraunces e Inter (usadas no protótipo de referência).
  */
 :root {
-  --background: #f4f0ea;
-  --foreground: #1c1a17;
+  /* Valores iniciais = paletteAt(0); DaylightController os atualiza com a rolagem */
+  --bg: #efebe5;
+  --fg: #1c1916;
+  --muted: #5e564d;
+  --accent: #9c4623;
+  --line: #cfc8bd;
+  --daylight-smoothing: 0.15s;
   --font-display-stack: var(--font-display), Georgia, serif;
   --font-text-stack: var(--font-text), system-ui, sans-serif;
 }
@@ -27,8 +32,11 @@ body {
 
 body {
   min-height: 100vh;
-  color: var(--foreground);
-  background: var(--background);
+  color: var(--fg);
+  background: var(--bg);
+  transition:
+    background-color var(--daylight-smoothing) linear,
+    color var(--daylight-smoothing) linear;
   font-family: var(--font-text-stack);
   -webkit-font-smoothing: antialiased;
 }
