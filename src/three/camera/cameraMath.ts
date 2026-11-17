@@ -111,7 +111,7 @@ export function viewFor(room: RoomLayout, bounds: Bounds = boundsOf(APARTMENT)):
   const south = cz > (bounds.z0 + bounds.z1) / 2
   const small = dim < SMALL_ROOM
   const base: Spherical = small
-    ? { target: [cx, 0.4, cz], r: clampRadius(7.5), theta: south ? 0.35 : Math.PI - 0.35, phi: 0.36 }
+    ? { target: [cx, 1.0, cz], r: clampRadius(6), theta: south ? 0.35 : Math.PI - 0.35, phi: 0.36 }
     : { target: [cx, 0.5, cz], r: clampRadius(Math.max(8.5, dim * 1.9)), theta: south ? 0.43 : Math.PI - 0.43, phi: 0.68 }
   const o = VIEW_OVERRIDES[room.id]
   if (!o) return base

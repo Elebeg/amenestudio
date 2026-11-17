@@ -1,17 +1,21 @@
-import Image from 'next/image'
-import Link from 'next/link'
 import { getPhoto, getProjects } from '@/content/projetos'
+import { HouseSection } from '@/components/house/HouseSection'
 import s from './home.module.css'
 
-const pad = (n: number) => String(n).padStart(2, '0')
-
 /**
- * 01 · A casa. Placeholder estático até a Task 10: o conteúdo de `[data-casa-stage]`
- * (a capa do projeto) é o que o canvas 3D substitui; título, cômodos e link ficam.
+ * 01 · A casa. O título fica aqui (servidor); o palco (`[data-casa-stage]`) é a maquete 3D
+ * interativa, com a capa do projeto como imagem de espera, e a lista de ambientes navega por ela.
  */
 export function Casa() {
   const projeto = getProjects()[0]
   const capa = getPhoto(projeto.capa)
+  // até 4 fotos por cômodo, resolvidas no servidor (o cliente não carrega o catálogo inteiro)
+  const rooms = projeto.rooms.map((r) => ({
+    id: r.id,
+    nome: r.nome,
+    descricao: r.descricao,
+    fotos: r.fotos.slice(0, 4).map(getPhoto),
+  }))
   return (
     <section id="casa" className={s.casa} aria-labelledby="casa-titulo">
       <div className={s.casaIntro}>
@@ -22,40 +26,21 @@ export function Casa() {
         </h1>
       </div>
 
-      <div className={s.casaStage} data-casa-stage>
-        <Image
-          src={capa.src}
-          width={capa.width}
-          height={capa.height}
-          placeholder="blur"
-          blurDataURL={capa.blurDataURL}
-          alt={`${projeto.nome}: living com parede de pedra natural, painéis de freijó e sofá em bouclê`}
-          sizes="(min-width: 900px) 60vw, 100vw"
-          preload
-        />
-      </div>
-
-      <div className={s.casaInfo}>
-        <p className={s.eyebrow}>
-          <span className={s.num}>01</span> A casa
-        </p>
-        <h2 id="casa-titulo" className={s.casaH2}>
-          {projeto.nome}
-        </h2>
-        <ol className={s.rooms} aria-label="Ambientes do projeto">
-          {projeto.rooms.map((r, i) => (
-            <li key={r.id}>
-              <span className={s.num} aria-hidden="true">
-                {pad(i + 1)}
-              </span>
-              {r.nome}
-            </li>
-          ))}
-        </ol>
-        <Link href={`/projetos/${projeto.slug}`} className={s.textLink}>
-          Ver projeto completo
-        </Link>
-      </div>
+      <HouseSection
+        projeto={{ nome: projeto.nome, slug: projeto.slug }}
+        rooms={rooms}
+        cover={capa}
+        coverAlt={`${projeto.nome}: living com parede de pedra natural, painéis de freijó e sofá em bouclê`}
+        stageClassName={s.casaStage}
+        infoClassName={s.casaInfo}
+        h2ClassName={s.casaH2}
+        linkClassName={s.textLink}
+        eyebrow={
+          <p className={s.eyebrow}>
+            <span className={s.num}>01</span> A casa
+          </p>
+        }
+      />
     </section>
   )
 }

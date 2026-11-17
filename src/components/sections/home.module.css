@@ -134,7 +134,7 @@
 
 .casa {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 2rem;
   padding-top: 6.5rem;
   padding-bottom: var(--block);
@@ -155,16 +155,6 @@
 
 .casaStage {
   position: relative;
-  overflow: hidden;
-  aspect-ratio: 4 / 5;
-  background: var(--line);
-}
-.casaStage img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: 45% 50%;
-  display: block;
 }
 
 .casaInfo {
@@ -176,31 +166,6 @@
   font-size: clamp(1.9rem, 2.8vw, 2.75rem);
   line-height: 1.05;
   font-style: italic;
-}
-
-.rooms {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  column-gap: var(--gap);
-  border-top: 1px solid var(--line);
-}
-.rooms li {
-  display: flex;
-  align-items: baseline;
-  padding: 0.6rem 0;
-  border-bottom: 1px solid var(--line);
-  font-size: 0.875rem;
-  font-weight: 300;
-  line-height: 1.35;
-}
-.rooms .num {
-  font-size: 0.6875rem;
-  flex: none;
-  width: 1.9rem;
-  margin: 0;
 }
 
 @media (min-width: 900px) {
