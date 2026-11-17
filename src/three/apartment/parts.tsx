@@ -56,6 +56,18 @@ export function metricUV(g: THREE.BufferGeometry): THREE.BufferGeometry {
 
 const k = (n: number) => n.toFixed(3)
 
+/**
+ * Formas descritas por função (Extruded/Flat) não têm parâmetros serializáveis: a chave é o
+ * `id`. Para que um `id` repetido com outra forma não devolva a geometria errada do cache,
+ * cada id fica registrado com o texto da função e os parâmetros numéricos. Se divergirem, lança erro.
+ */
+const shapeIds = new Map<string, string>()
+export function assertUniqueShapeId(id: string, signature: string) {
+  const prev = shapeIds.get(id)
+  if (prev === undefined) shapeIds.set(id, signature)
+  else if (prev !== signature) throw new Error(`id de forma repetido com parâmetros diferentes: ${id}`)
+}
+
 export function boxGeometry(w: number, h: number, d: number, r = 0) {
   const rr = Math.min(r, w / 2 - 0.001, h / 2 - 0.001, d / 2 - 0.001)
   return cachedGeometry(`box:${k(w)}:${k(h)}:${k(d)}:${k(Math.max(0, rr))}`, () =>
@@ -203,7 +215,7 @@ export function Lattice({
 
 /** Sólido de revolução (vasos, cuba, pendentes). Perfil em pares [raio, altura]. */
 export function Lathe({ id, profile, p, m, seg = 36, ...rest }: MeshProps & { id: string; profile: Array<[number, number]>; seg?: number }) {
-  const g = cachedGeometry(`lathe:${id}:${seg}`, () =>
+  const g = cachedGeometry(`lathe:${id}:${seg}:${profile.map(([r, y]) => `${k(r)},${k(y)}`).join(';')}`, () =>
     new THREE.LatheGeometry(
       profile.map(([r, y]) => new THREE.Vector2(r, y)),
       seg,
@@ -236,7 +248,9 @@ export function Extruded({
   bevel = 0,
   ...rest
 }: MeshProps & { id: string; shape: () => THREE.Shape; depth: number; bevel?: number }) {
-  const g = cachedGeometry(`ext:${id}`, () => {
+  const sig = `${k(depth)}:${k(bevel)}:${shape.toString()}`
+  assertUniqueShapeId(`ext:${id}`, sig)
+  const g = cachedGeometry(`ext:${id}:${k(depth)}:${k(bevel)}`, () => {
     const geo = new THREE.ExtrudeGeometry(shape(), {
       depth,
       bevelEnabled: bevel > 0,
@@ -252,6 +266,7 @@ export function Extruded({
 
 /** Forma plana (vidro do espelho, tampos). */
 export function Flat({ id, shape, ...rest }: MeshProps & { id: string; shape: () => THREE.Shape }) {
+  assertUniqueShapeId(`flat:${id}`, shape.toString())
   const g = cachedGeometry(`flat:${id}`, () => new THREE.ShapeGeometry(shape(), 48))
   return <Mesh geometry={g} {...rest} />
 }
@@ -267,7 +282,7 @@ export function ArcBand({
   bevel,
   ...rest
 }: MeshProps & { id: string; ri: number; ro: number; a0: number; a1: number; h: number; bevel: number }) {
-  const g = cachedGeometry(`arc:${id}`, () => {
+  const g = cachedGeometry(`arc:${id}:${[ri, ro, a0, a1, h, bevel].map(k).join(':')}`, () => {
     const s = new THREE.Shape()
     const b = bevel
     s.absarc(0, 0, ro - b, a0, a1, false)

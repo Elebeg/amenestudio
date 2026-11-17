@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
+import { useThree } from '@react-three/fiber'
 import { useGLTF } from '@react-three/drei'
 import {
   APARTMENT,
@@ -12,7 +13,8 @@ import {
   type Box,
   type ExteriorWall,
 } from './layout'
-import { applyLighting, getMaterials, getWallMaterials, type Lighting } from './materials'
+import { applyLighting, createInstanceMaterials, getMaterials, type Lighting } from './materials'
+import { ApartmentMaterialsContext, useMats } from './materialsContext'
 import { ROOM_COMPONENTS } from './rooms'
 
 export type ApartmentSource =
@@ -30,10 +32,18 @@ export function ApartmentModel({ source, lighting }: Props) {
 /**
  * Fase 2: modelo do escritório exportado em GLB. Por enquanto só carrega e exibe a cena;
  * a troca de lightmaps manhã/noite entra quando os mapas existirem.
+ *
+ * Convenção de exportação (Blender → GLB): as paredes externas devem ser objetos/grupos
+ * nomeados `wall-n`, `wall-s`, `wall-e` e `wall-w` (norte = −z, leste = +x, como em layout.ts),
+ * com material próprio por lado, porque o WallFader (Task 10) procura esses nomes.
+ *
+ * A cena do cache do useGLTF é clonada: um Object3D só pode ter um pai, e duas maquetes
+ * em Canvases diferentes (abertura + seção da casa) roubariam a mesma instância.
  */
 function GlbApartment({ url }: { url: string }) {
   const { scene } = useGLTF(url)
-  return <primitive object={scene} />
+  const instance = useMemo(() => scene.clone(), [scene])
+  return <primitive object={instance} />
 }
 
 const unitBox = new THREE.BoxGeometry(1, 1, 1)
@@ -119,8 +129,17 @@ function trimShadowCasters(root: THREE.Object3D) {
 
 function ProceduralApartment({ lighting }: { lighting: Lighting }) {
   const m = getMaterials()
+  // materiais mutáveis próprios desta maquete (paredes externas, luz, palha, voile)
+  const inst = useMemo(() => createInstanceMaterials(m), [m])
+  useEffect(() => () => inst.dispose(), [inst])
+  const mats = useMemo(() => ({ ...m, luz: inst.luz, palha: inst.palha, voile: inst.voile }), [m, inst])
+  const invalidate = useThree((s) => s.invalidate)
   const root = useRef<THREE.Group>(null)
-  useEffect(() => applyLighting(m, lighting), [m, lighting])
+  // layout effect + invalidate: com frameloop "demand", montar em 'noite' nunca mostra um quadro de manhã
+  useLayoutEffect(() => {
+    applyLighting(inst, lighting)
+    invalidate()
+  }, [inst, lighting, invalidate])
   useLayoutEffect(() => {
     if (root.current) trimShadowCasters(root.current)
   }, [])
@@ -149,6 +168,7 @@ function ProceduralApartment({ lighting }: { lighting: Lighting }) {
   const T = APARTMENT.wallThickness
 
   return (
+    <ApartmentMaterialsContext.Provider value={mats}>
     <group name="apartment" ref={root}>
       {/* base da maquete */}
       <mesh
@@ -173,7 +193,7 @@ function ProceduralApartment({ lighting }: { lighting: Lighting }) {
 
       {/* paredes externas: um grupo por lado, cada um com material próprio */}
       {data.exterior.map(({ wall, caps, boards, glass, frames }) => {
-        const wm = getWallMaterials(wall.side)
+        const wm = inst.walls[wall.side]
         return (
           <group key={wall.side} name={`wall-${wall.side}`} userData={{ side: wall.side, normal: wall.normal }}>
             <BoxInstances boxes={wall.pieces} material={wm.wall} />
@@ -195,6 +215,7 @@ function ProceduralApartment({ lighting }: { lighting: Lighting }) {
       <HallFurniture />
       <group name="ceiling-height" userData={{ height: H }} />
     </group>
+    </ApartmentMaterialsContext.Provider>
   )
 }
 
@@ -223,7 +244,7 @@ function FloorPlate({ rect, material }: { rect: { x0: number; z0: number; x1: nu
 
 /** Hall de entrada: aparador suspenso de freijó com espelho e planta (área de circulação). */
 function HallFurniture() {
-  const m = getMaterials()
+  const m = useMats()
   const hall = APARTMENT.areas.find((a) => a.name === 'hall')!
   const { x1, z0 } = hall.rect
   return (

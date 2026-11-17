@@ -1,6 +1,6 @@
 'use client'
 
-import { getMaterials } from '../materials'
+import { useMats } from '../materialsContext'
 import { B, C, Curtain, Cyl, Plant, RoomGroup, Slats } from '../parts'
 import { Chair, DiscPendant, Vase } from '../furniture'
 import type { RoomLayout } from '../layout'
@@ -10,7 +10,7 @@ import type { RoomLayout } from '../layout'
  * Local: x 0→7,4 (oeste→leste), z 0→5,6 (norte→sul). Parede sul = pedra contínua com o living.
  */
 export function Cozinha({ room }: { room: RoomLayout }) {
-  const m = getMaterials()
+  const m = useMats()
   const { x0, z0, x1 } = room.rect
   const W = x1 - x0
   const S = 5.54 // face da parede sul (meia espessura da divisa com o corredor)

@@ -1,6 +1,6 @@
 'use client'
 
-import { getMaterials } from '../materials'
+import { useMats } from '../materialsContext'
 import { ArcBand, B, C, Curtain, Cyl, Plant, RoomGroup, Slats } from '../parts'
 import { Tv, Vase } from '../furniture'
 import type { RoomLayout } from '../layout'
@@ -22,7 +22,7 @@ const A1 = Math.PI / 2 + HALF
 const onArc = (phi: number, r: number): [number, number] => [SOFA_C[0] + Math.cos(phi) * r, SOFA_C[2] - Math.sin(phi) * r]
 
 export function Living({ room }: { room: RoomLayout }) {
-  const m = getMaterials()
+  const m = useMats()
   const { x0, z0, x1 } = room.rect
   const W = x1 - x0
   const S = 5.54

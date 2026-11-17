@@ -1,6 +1,6 @@
 'use client'
 
-import { getMaterials } from '../materials'
+import { useMats } from '../materialsContext'
 import { B, C, Cyl, Extruded, Lathe, Plant, RoomGroup, smoothShape } from '../parts'
 import { OrganicMirror, StrawPendant } from '../furniture'
 import type { RoomLayout } from '../layout'
@@ -24,7 +24,7 @@ const COUNTER: Array<[number, number]> = [
 ]
 
 export function Lavabo({ room }: { room: RoomLayout }) {
-  const m = getMaterials()
+  const m = useMats()
   const { x0, z0 } = room.rect
   const Wf = 0.06 // face da parede oeste
 

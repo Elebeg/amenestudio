@@ -1,6 +1,6 @@
 'use client'
 
-import { getMaterials } from '../materials'
+import { useMats } from '../materialsContext'
 import { B, Curtain, RoomGroup, Slats } from '../parts'
 import { Bed, OrganicMirror, Tv, Vase } from '../furniture'
 import type { RoomLayout } from '../layout'
@@ -12,7 +12,7 @@ import type { RoomLayout } from '../layout'
  * Local: x 0→3,4, z 0→3,6.
  */
 export function QuartoSolteiro({ room }: { room: RoomLayout }) {
-  const m = getMaterials()
+  const m = useMats()
   const { x0, z0 } = room.rect
   const E = 3.34
   return (

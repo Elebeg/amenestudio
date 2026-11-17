@@ -1,7 +1,7 @@
 'use client'
 
 import * as THREE from 'three'
-import { getMaterials } from './materials'
+import { useMats } from './materialsContext'
 import { ArcBand, B, C, Cyl, Extruded, Flat, Inst, Lathe, boxGeometry, scalePts, smoothShape, type V3 } from './parts'
 
 /** Peças de mobiliário que se repetem entre cômodos. */
@@ -18,7 +18,7 @@ export function Chair({
   seat?: number
   upholstery?: THREE.Material
 }) {
-  const m = getMaterials()
+  const m = useMats()
   const u = upholstery ?? m.couro
   const leg = boxGeometry(0.035, seat, 0.035, 0.01)
   return (
@@ -59,7 +59,7 @@ export function Bed({
   quilt: THREE.Material
   pillows?: number
 }) {
-  const m = getMaterials()
+  const m = useMats()
   const pw = w / pillows - 0.12
   const pillow = boxGeometry(pw, 0.16, 0.42, 0.07)
   const pos: V3[] = Array.from({ length: pillows }, (_, i) => [-w / 2 + (w / pillows) * (i + 0.5), 0.6, 0.32])
@@ -75,7 +75,7 @@ export function Bed({
 
 /** Criado-mudo suspenso de freijó. */
 export function Nightstand({ p, rotY = 0, w = 0.45 }: { p: V3; rotY?: number; w?: number }) {
-  const m = getMaterials()
+  const m = useMats()
   return (
     <group position={p} rotation={[0, rotY, 0]}>
       <B s={[w, 0.26, 0.4]} r={0.012} p={[0, 0.36, 0]} m={m.freijo} />
@@ -86,13 +86,13 @@ export function Nightstand({ p, rotY = 0, w = 0.45 }: { p: V3; rotY?: number; w?
 
 /** TV fina na parede; `p` é o centro, face voltada para +z local. */
 export function Tv({ p, rotY = 0, w = 1.3 }: { p: V3; rotY?: number; w?: number }) {
-  const m = getMaterials()
+  const m = useMats()
   return <C s={[w, w * 0.565, 0.035]} r={0.006} p={p} rot={[0, rotY, 0]} m={m.tela} />
 }
 
 /** Pendente de palha (lavabo, suíte ripada). `p` = ponto mais baixo. */
 export function StrawPendant({ p, s = 1, squash = 1 }: { p: V3; s?: number; squash?: number }) {
-  const m = getMaterials()
+  const m = useMats()
   const cord = 2.7 - p[1] - 0.26 * s * squash
   return (
     <group position={p}>
@@ -119,7 +119,7 @@ export function StrawPendant({ p, s = 1, squash = 1 }: { p: V3; s?: number; squa
 
 /** Pendente de disco (jantar). */
 export function DiscPendant({ p }: { p: V3 }) {
-  const m = getMaterials()
+  const m = useMats()
   return (
     <group position={p}>
       <Lathe
@@ -167,7 +167,7 @@ const PAISLEY: Array<[number, number]> = [
  * `kind`: 'seixo' (quartos, vertical) ou 'gota' (lavabo, horizontal com moldura larga).
  */
 export function OrganicMirror({ p, rotY = 0, kind, s = 1 }: { p: V3; rotY?: number; kind: 'seixo' | 'gota'; s?: number }) {
-  const m = getMaterials()
+  const m = useMats()
   const pts = kind === 'seixo' ? PEBBLE : PAISLEY
   const inner = kind === 'seixo' ? 0.9 : 0.78
   const frame = kind === 'seixo' ? m.estofado : m.pedraBege
@@ -193,7 +193,7 @@ export function OrganicMirror({ p, rotY = 0, kind, s = 1 }: { p: V3; rotY?: numb
 
 /** Vaso torneado pequeno de cerâmica. */
 export function Vase({ p, s = 1, m }: { p: V3; s?: number; m?: THREE.Material }) {
-  const mats = getMaterials()
+  const mats = useMats()
   return (
     <Lathe
       id="vase"
@@ -217,7 +217,7 @@ export function Vase({ p, s = 1, m }: { p: V3; s?: number; m?: THREE.Material })
 
 /** Guarda-roupa de laca branca com frisos de porta. Frente voltada para +z local. */
 export function Wardrobe({ p, rotY = 0, w, h = 2.6, d = 0.6 }: { p: V3; rotY?: number; w: number; h?: number; d?: number }) {
-  const m = getMaterials()
+  const m = useMats()
   const doors = Math.max(2, Math.round(w / 0.55))
   const seam = boxGeometry(0.006, h - 0.1, 0.004)
   const pos: V3[] = Array.from({ length: doors - 1 }, (_, i) => [-w / 2 + (w / doors) * (i + 1), 0.05, d / 2 + 0.002])

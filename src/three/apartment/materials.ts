@@ -299,36 +299,63 @@ export function getMaterials(): Materials {
   return cache
 }
 
+/** Materiais de uma parede externa: parede, tampa de corte, rodapé, caixilho e vidro. */
+export type WallMaterials = Record<'wall' | 'cap' | 'board' | 'frame' | 'glass', THREE.MeshStandardMaterial>
+
+/** Materiais-base de onde saem os clones mutáveis de cada instância. */
+export type MutableBase = Pick<Materials, 'gesso' | 'corte' | 'rodape' | 'caixilho' | 'vidro' | 'luz' | 'palha' | 'voile'>
+
 /**
- * Materiais próprios de cada parede externa (parede, tampa de corte, rodapé, caixilho, vidro),
- * todos com nome `wall-${side}*`, para o WallFader (Task 10) variar a opacidade por lado
- * sem afetar o resto da maquete.
+ * Materiais MUTÁVEIS de uma instância de ApartmentModel. Duas maquetes montadas ao mesmo
+ * tempo (ex.: abertura + seção da casa) não podem compartilhá-los, porque:
+ *  - o WallFader (Task 10) altera opacity/transparent/depthWrite das paredes `wall-${side}*`;
+ *  - `applyLighting` altera os emissivos de luz, palha e voile.
+ * Texturas e geometrias continuam compartilhadas, já que `clone()` reaproveita as texturas.
+ * A opacidade original de cada material de parede fica em `userData.baseOpacity`,
+ * e o fader deve MULTIPLICAR esse valor (o vidro já começa em 0,18).
  */
-type WallMaterials = Record<'wall' | 'cap' | 'board' | 'frame' | 'glass', THREE.MeshStandardMaterial>
-const wallCache = new Map<Side, WallMaterials>()
-export function getWallMaterials(side: Side): WallMaterials {
-  let entry = wallCache.get(side)
-  if (!entry) {
-    const m = getMaterials()
-    const named = (src: THREE.MeshStandardMaterial, suffix: string) => {
-      const c = src.clone()
-      c.name = `wall-${side}${suffix}`
-      return c
-    }
-    entry = {
-      wall: named(m.gesso, ''),
-      cap: named(m.corte, '-corte'),
-      board: named(m.rodape, '-rodape'),
-      frame: named(m.caixilho, '-caixilho'),
-      glass: named(m.vidro, '-vidro'),
-    }
-    wallCache.set(side, entry)
+export type InstanceMaterials = {
+  walls: Record<Side, WallMaterials>
+  luz: THREE.MeshStandardMaterial
+  palha: THREE.MeshStandardMaterial
+  voile: THREE.MeshStandardMaterial
+  dispose: () => void
+}
+
+const SIDES: Side[] = ['n', 's', 'e', 'w']
+
+export function createInstanceMaterials(base: MutableBase): InstanceMaterials {
+  const all: THREE.Material[] = []
+  const clone = (src: THREE.MeshStandardMaterial, name: string) => {
+    const c = src.clone()
+    c.name = name
+    c.userData = { ...c.userData, baseOpacity: src.opacity }
+    all.push(c)
+    return c
   }
-  return entry
+  const walls = Object.fromEntries(
+    SIDES.map((side) => [
+      side,
+      {
+        wall: clone(base.gesso, `wall-${side}`),
+        cap: clone(base.corte, `wall-${side}-corte`),
+        board: clone(base.rodape, `wall-${side}-rodape`),
+        frame: clone(base.caixilho, `wall-${side}-caixilho`),
+        glass: clone(base.vidro, `wall-${side}-vidro`),
+      },
+    ]),
+  ) as Record<Side, WallMaterials>
+  return {
+    walls,
+    luz: clone(base.luz, 'luz'),
+    palha: clone(base.palha, 'palha'),
+    voile: clone(base.voile, 'voile'),
+    dispose: () => all.forEach((m) => m.dispose()),
+  }
 }
 
 /** Ajustes de material que dependem do clima de luz (as luzes em si vêm da Task 10). */
-export function applyLighting(m: Materials, lighting: Lighting) {
+export function applyLighting(m: Pick<InstanceMaterials, 'luz' | 'palha' | 'voile'>, lighting: Lighting) {
   const night = lighting === 'noite'
   m.luz.emissiveIntensity = night ? 2.4 : 0
   m.palha.emissiveIntensity = night ? 0.55 : 0

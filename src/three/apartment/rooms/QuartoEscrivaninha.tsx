@@ -1,7 +1,7 @@
 'use client'
 
 import * as THREE from 'three'
-import { getMaterials } from '../materials'
+import { useMats } from '../materialsContext'
 import { B, Curtain, Extruded, RoomGroup, Slats } from '../parts'
 import { Bed, Chair, Nightstand, Tv } from '../furniture'
 import type { RoomLayout } from '../layout'
@@ -28,7 +28,7 @@ function deskShape() {
 }
 
 export function QuartoEscrivaninha({ room }: { room: RoomLayout }) {
-  const m = getMaterials()
+  const m = useMats()
   const { x0, z0 } = room.rect
   const E = 3.14
   return (
