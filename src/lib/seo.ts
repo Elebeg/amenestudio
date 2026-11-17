@@ -66,4 +66,4 @@ export function projectMetadata(p: Projeto, s: SiteConfig): Metadata {
 }
 
 /** Serializa JSON-LD para <script>, escapando "<" para não fechar a tag. */
-export const jsonLdString = (data: object) => JSON.stringify(data).replace(/</g, '\u003c')
+export const jsonLdString = (data: object) => JSON.stringify(data).replace(/</g, '\\u003c')

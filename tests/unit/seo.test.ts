@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { site, type SiteConfig } from '@/config/site'
 import { getProject } from '@/content/projetos'
-import { orgJsonLd, projectJsonLd, projectMetadata } from '@/lib/seo'
+import { jsonLdString, orgJsonLd, projectJsonLd, projectMetadata } from '@/lib/seo'
 import sitemap from '@/app/sitemap'
 import robots from '@/app/robots'
 
@@ -44,6 +44,14 @@ describe('projectMetadata', () => {
     expect(m.alternates?.canonical).toBe(`/projetos/${projeto.slug}`)
     expect((m.openGraph as { locale: string }).locale).toBe('pt_BR')
     expect((m.twitter as { card: string }).card).toBe('summary_large_image')
+  })
+})
+
+describe('jsonLdString', () => {
+  it('escapa "<" e continua sendo JSON válido', () => {
+    const s = jsonLdString({ x: '</script>' })
+    expect(s).not.toContain('</script>')
+    expect(JSON.parse(s)).toEqual({ x: '</script>' })
   })
 })
 

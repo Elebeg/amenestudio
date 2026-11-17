@@ -3,6 +3,7 @@
 @media (prefers-reduced-motion: reduce) { .header { transition: none; } }
 .logo { font-family: var(--font-display), serif; font-size: 1.5rem; letter-spacing: 0.3em; color: inherit; text-decoration: none; }
 .nav ul { display: flex; gap: 1.5rem; list-style: none; margin: 0; padding: 0; }
+.nav li { flex-shrink: 0; }
 .nav a { color: inherit; text-decoration: none; font-size: 0.875rem; letter-spacing: 0.08em; }
 .nav a:hover, .nav a:focus-visible { color: var(--accent, #B5651D); }
 @media (max-width: 640px) {
