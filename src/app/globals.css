@@ -68,3 +68,22 @@ h3 {
 figure {
   margin: 0;
 }
+
+/* Transição entre páginas (View Transitions, React 19.3 + Next 16.4) */
+@keyframes vt-fade-in { from { opacity: 0; } }
+@keyframes vt-fade-out { to { opacity: 0; } }
+::view-transition-old(.page-fade) { animation: 220ms ease-out both vt-fade-out; }
+::view-transition-new(.page-fade) { animation: 520ms ease-out 120ms both vt-fade-in; }
+::view-transition-group(.morph) { animation-duration: 600ms; animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1); }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+}
+
+/* Fallback de entrada para navegadores sem View Transitions: CSS puro, sem flash. */
+@keyframes page-enter-in { from { opacity: 0; transform: translateY(16px); } }
+@supports not (view-transition-name: none) {
+  .page-enter { animation: page-enter-in 0.8s ease-out both; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-enter { animation: none !important; }
+}
