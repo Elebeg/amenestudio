@@ -3,6 +3,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ViewTransition } from 'react'
+import { site } from '@/config/site'
+import { jsonLdString, projectJsonLd, projectMetadata } from '@/lib/seo'
 import { getPhoto, getProject, getProjects } from '@/content/projetos'
 import { ProjectGallery } from '@/components/project/ProjectGallery'
 import { PageEnter } from '@/components/project/PageEnter'
@@ -17,7 +19,7 @@ export async function generateMetadata({ params }: PageProps<'/projetos/[slug]'>
   const { slug } = await params
   const projeto = getProject(slug)
   if (!projeto) return {}
-  return { title: projeto.nome, description: projeto.conceito }
+  return projectMetadata(projeto, site)
 }
 
 export default async function ProjetoPage({ params }: PageProps<'/projetos/[slug]'>) {
@@ -39,6 +41,10 @@ export default async function ProjetoPage({ params }: PageProps<'/projetos/[slug
 
   return (
     <main className={styles.main}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdString(projectJsonLd(projeto, site)) }}
+      />
       <PageEnter>
         <header className={styles.intro}>
           <p className={styles.eyebrow}>Projeto</p>

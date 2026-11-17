@@ -1,14 +1,13 @@
 import Image from 'next/image'
 import Link from 'next/link'
+import { ViewTransition } from 'react'
 import { getPhoto, getProjects } from '@/content/projetos'
 import s from './home.module.css'
 
 // Fotos do destaque na home (a capa já abre a página em #casa).
-const DESTAQUE: Record<string, { principal: string; detalhe: string; altPrincipal: string; altDetalhe: string }> = {
+const DESTAQUE: Record<string, { detalhe: string; altDetalhe: string }> = {
   'apartamento-pedra': {
-    principal: 'IMG_4592',
     detalhe: 'IMG_4759',
-    altPrincipal: 'Mesa de jantar em mármore com cadeiras de madeira e couro caramelo, pedra natural ao fundo',
     altDetalhe: 'Parede de pedra natural sobre painel ripado e rack suspenso em freijó',
   },
 }
@@ -31,20 +30,22 @@ export function ProjetosDestaque() {
       <ul className={s.projetoLista}>
         {projetos.map((p, i) => {
           const d = DESTAQUE[p.slug]
-          const principal = getPhoto(d?.principal ?? p.capa)
+          const principal = getPhoto(p.capa)
           const detalhe = d ? getPhoto(d.detalhe) : null
           return (
             <li key={p.slug} className={s.projeto}>
               <figure className={s.projetoPrincipal}>
-                <Image
-                  src={principal.src}
-                  width={principal.width}
-                  height={principal.height}
-                  placeholder="blur"
-                  blurDataURL={principal.blurDataURL}
-                  alt={d?.altPrincipal ?? p.nome}
-                  sizes="(min-width: 900px) 58vw, 100vw"
-                />
+                <ViewTransition name={`projeto-${p.slug}`} share="morph" default="none">
+                  <Image
+                    src={principal.src}
+                    width={principal.width}
+                    height={principal.height}
+                    placeholder="blur"
+                    blurDataURL={principal.blurDataURL}
+                    alt={`${p.nome}: vista principal do living`}
+                    sizes="(min-width: 900px) 58vw, 100vw"
+                  />
+                </ViewTransition>
               </figure>
               {detalhe && (
                 <figure className={s.projetoDetalhe}>
