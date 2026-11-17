@@ -1,5 +1,5 @@
 import type { RoomId } from '@/content/projetos'
-import { APARTMENT } from '@/three/apartment/layout'
+import { APARTMENT, type Rect, type RoomLayout } from '@/three/apartment/layout'
 
 /**
  * Matemática pura da câmera orbital da maquete (sem three/DOM, testável no Node).
@@ -64,42 +64,67 @@ export function sphericalToPosition(s: Spherical, out: [number, number, number] 
 }
 
 /** Cômodo cujo retângulo contém o ponto (x, z) do piso, ou null. */
-export function roomAtPoint(x: number, z: number): RoomId | null {
-  for (const r of APARTMENT.rooms) {
+export function roomAtPoint(x: number, z: number, rooms: readonly RoomLayout[] = APARTMENT.rooms): RoomId | null {
+  for (const r of rooms) {
     if (x >= r.rect.x0 && x <= r.rect.x1 && z >= r.rect.z0 && z <= r.rect.z1) return r.id
   }
   return null
 }
 
-// ── enquadramentos ─────────────────────────────────────────────────────────
+// ── enquadramentos (derivados da planta, nunca de coordenadas fixas) ────────
 
-/** Visão geral: de nordeste, com a pedra e o living à frente. */
-const OVERVIEW: Spherical = { target: [0, 0.4, 0], r: 27, theta: Math.PI - 0.62, phi: 0.95 }
+type Bounds = Rect
 
-/**
- * Cômodos: φ ≈ 0,68, vistos pela parede externa que some (quartos da fileira sul vistos do sul,
- * área social vista do norte). O lavabo (1,5 × 1,8 m, paredes de 2,7 m) quase não aparece a
- * 0,68: ganha uma vista bem mais de cima.
- */
-function roomView(id: RoomId): Spherical {
-  const room = APARTMENT.rooms.find((r) => r.id === id)!
-  const { x0, x1, z0, z1 } = room.rect
-  const cx = (x0 + x1) / 2
-  const cz = (z0 + z1) / 2
-  if (id === 'lavabo') return { target: [cx, 0.4, cz], r: clampRadius(7.5), theta: Math.PI - 0.35, phi: 0.36 }
-  const dim = Math.max(x1 - x0, z1 - z0)
-  const south = cz > 0
+/** Visão geral: de nordeste, centrada na planta, r 27 / φ 0,95. */
+export function overviewView(a: { rooms: readonly { rect: Rect }[]; areas?: readonly { rect: Rect }[] } = APARTMENT): Spherical {
+  const f = boundsOf(a)
+  return { target: [(f.x0 + f.x1) / 2, 0.4, (f.z0 + f.z1) / 2], r: 27, theta: Math.PI - 0.62, phi: 0.95 }
+}
+
+function boundsOf(a: { rooms: readonly { rect: Rect }[]; areas?: readonly { rect: Rect }[] }): Bounds {
+  const all = [...a.rooms, ...(a.areas ?? [])].map((r) => r.rect)
   return {
-    target: [cx, 0.5, cz],
-    r: clampRadius(Math.max(8.5, dim * 1.9)),
-    theta: south ? 0.43 : Math.PI - 0.43,
-    phi: 0.68,
+    x0: Math.min(...all.map((r) => r.x0)),
+    z0: Math.min(...all.map((r) => r.z0)),
+    x1: Math.max(...all.map((r) => r.x1)),
+    z1: Math.max(...all.map((r) => r.z1)),
   }
 }
 
-export const VIEWS: Record<ViewId, Spherical> = {
-  overview: OVERVIEW,
-  ...(Object.fromEntries(APARTMENT.rooms.map((r) => [r.id, roomView(r.id)])) as Record<RoomId, Spherical>),
+/** Abaixo desta maior dimensão (m) o cômodo é visto bem mais de cima (paredes de 2,7 m escondem o piso). */
+const SMALL_ROOM = 2.6
+
+/** Ajustes finos opcionais por cômodo (aplicados sobre o enquadramento derivado). */
+export const VIEW_OVERRIDES: Partial<Record<RoomId, Partial<Omit<Spherical, 'target'>>>> = {}
+
+/**
+ * Enquadramento de um cômodo a partir do seu retângulo: alvo no centro, raio proporcional ao
+ * tamanho, φ ≈ 0,68, visto pelo lado da fachada mais próxima (metade sul da planta vista do sul,
+ * metade norte vista do norte), onde a parede externa some. Cômodos pequenos (ex.: lavabo)
+ * ganham uma vista quase de cima.
+ */
+export function viewFor(room: RoomLayout, bounds: Bounds = boundsOf(APARTMENT)): Spherical {
+  const { x0, x1, z0, z1 } = room.rect
+  const cx = (x0 + x1) / 2
+  const cz = (z0 + z1) / 2
+  const dim = Math.max(x1 - x0, z1 - z0)
+  const south = cz > (bounds.z0 + bounds.z1) / 2
+  const small = dim < SMALL_ROOM
+  const base: Spherical = small
+    ? { target: [cx, 0.4, cz], r: clampRadius(7.5), theta: south ? 0.35 : Math.PI - 0.35, phi: 0.36 }
+    : { target: [cx, 0.5, cz], r: clampRadius(Math.max(8.5, dim * 1.9)), theta: south ? 0.43 : Math.PI - 0.43, phi: 0.68 }
+  const o = VIEW_OVERRIDES[room.id]
+  if (!o) return base
+  return { ...base, ...o, r: clampRadius(o.r ?? base.r), phi: clampPhi(o.phi ?? base.phi) }
 }
+
+export function buildViews(a: { rooms: readonly RoomLayout[]; areas?: readonly { rect: Rect }[] }): Record<ViewId, Spherical> {
+  const b = boundsOf(a)
+  const views = { overview: overviewView(a) } as Record<ViewId, Spherical>
+  for (const r of a.rooms) views[r.id] = viewFor(r, b)
+  return views
+}
+
+export const VIEWS: Record<ViewId, Spherical> = buildViews(APARTMENT)
 
 export const VIEW_ORDER: ViewId[] = ['overview', ...APARTMENT.rooms.map((r) => r.id)]

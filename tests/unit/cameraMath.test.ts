@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
   VIEWS,
+  buildViews,
+  overviewView,
   clampPhi,
   clampRadius,
   easeInOutCubic,
@@ -10,7 +12,7 @@ import {
   wallOpacity,
   type Spherical,
 } from '@/three/camera/cameraMath'
-import { APARTMENT } from '@/three/apartment/layout'
+import { APARTMENT, type RoomLayout } from '@/three/apartment/layout'
 
 const a: Spherical = { target: [0, 0, 0], r: 27, theta: 3, phi: 0.95 }
 const b: Spherical = { target: [2, 0.5, -1], r: 9, theta: -3, phi: 0.68 }
@@ -61,29 +63,54 @@ describe('cameraMath', () => {
     expect(wallOpacity([1, 0], [0.3, 0.95])).toBe(1)
   })
 
-  it('VIEWS: visão geral r 27 / phi .95 e um enquadramento por cômodo', () => {
-    expect(VIEWS.overview.r).toBe(27)
-    expect(VIEWS.overview.phi).toBe(0.95)
-    for (const room of APARTMENT.rooms) {
-      const v = VIEWS[room.id]
-      expect(v, room.id).toBeDefined()
-      const cx = (room.rect.x0 + room.rect.x1) / 2
-      const cz = (room.rect.z0 + room.rect.z1) / 2
-      expect(v.target[0]).toBeCloseTo(cx)
-      expect(v.target[2]).toBeCloseTo(cz)
+  // planta sintética: não depende das coordenadas da planta real (que ainda vai mudar)
+  const rect = (x0: number, z0: number, x1: number, z1: number) => ({ x0, z0, x1, z1 })
+  const mk = (id: RoomLayout['id'], r: ReturnType<typeof rect>): RoomLayout => ({
+    id,
+    rect: r,
+    openings: [],
+    labelAt: [(r.x0 + r.x1) / 2, 3, (r.z0 + r.z1) / 2],
+  })
+  const plan = {
+    rooms: [mk('living', rect(0, -6, 6, -1)), mk('lavabo', rect(6, -3, 7.5, -1.2)), mk('suite-casal', rect(0, 1, 4, 5))],
+    areas: [{ rect: rect(-2, -6, 10, 5) }],
+  }
+
+  it('overviewView: centro da planta, r 27, φ 0,95', () => {
+    const o = overviewView(plan)
+    expect(o.r).toBe(27)
+    expect(o.phi).toBe(0.95)
+    expect(o.target[0]).toBeCloseTo(4)
+    expect(o.target[2]).toBeCloseTo(-0.5)
+  })
+
+  it('viewFor: alvo no centro do cômodo, φ ≈ 0,68, visto pela fachada mais próxima', () => {
+    const views = buildViews(plan)
+    for (const room of plan.rooms) {
+      const v = views[room.id]
+      expect(v.target[0]).toBeCloseTo((room.rect.x0 + room.rect.x1) / 2)
+      expect(v.target[2]).toBeCloseTo((room.rect.z0 + room.rect.z1) / 2)
       expect(v.phi).toBe(clampPhi(v.phi))
       expect(v.r).toBe(clampRadius(v.r))
-      // cômodos: phi ≈ .68; o lavabo (1,5 × 1,8 m) pede uma vista mais de cima
-      if (room.id === 'lavabo') expect(v.phi).toBeLessThan(0.5)
-      else expect(v.phi).toBeCloseTo(0.68, 1)
     }
+    expect(views.living.phi).toBeCloseTo(0.68)
+    // metade norte vista do norte (cos θ < 0), metade sul vista do sul (cos θ > 0)
+    expect(Math.cos(views.living.theta)).toBeLessThan(0)
+    expect(Math.cos(views['suite-casal'].theta)).toBeGreaterThan(0)
+    // cômodo pequeno (1,5 × 1,8 m): vista bem mais de cima
+    expect(views.lavabo.phi).toBeLessThan(0.5)
+    // cômodo maior → câmera mais longe
+    expect(views.living.r).toBeGreaterThan(views['suite-casal'].r - 1e-9)
+  })
+
+  it('VIEWS cobre todos os cômodos da planta atual', () => {
+    for (const room of APARTMENT.rooms) expect(VIEWS[room.id], room.id).toBeDefined()
+    expect(VIEWS.overview.r).toBe(27)
   })
 
   it('roomAtPoint: encontra o cômodo sob um ponto do piso', () => {
-    const living = APARTMENT.rooms.find((r) => r.id === 'living')!
-    const cx = (living.rect.x0 + living.rect.x1) / 2
-    const cz = (living.rect.z0 + living.rect.z1) / 2
-    expect(roomAtPoint(cx, cz)).toBe('living')
-    expect(roomAtPoint(100, 100)).toBeNull()
+    expect(roomAtPoint(3, -3, plan.rooms)).toBe('living')
+    expect(roomAtPoint(2, 3, plan.rooms)).toBe('suite-casal')
+    expect(roomAtPoint(100, 100, plan.rooms)).toBeNull()
   })
 })
