@@ -1,0 +1,484 @@
+/*
+ * Home: seções institucionais. Cores só por var(--bg|--fg|--muted|--accent|--line),
+ * que o DaylightController interpola do amanhecer (topo) ao anoitecer (contato).
+ * Grade editorial de 12 colunas; filetes finos no lugar de cartões e sombras.
+ */
+
+.casa,
+.manifesto,
+.projetos,
+.processo,
+.estudio,
+.contato {
+  --gutter: clamp(1rem, 4vw, 4rem);
+  --gap: clamp(1rem, 2vw, 2rem);
+  --block: clamp(5rem, 14vh, 10rem);
+  position: relative;
+  padding-inline: var(--gutter);
+  max-width: 1600px;
+  margin-inline: auto;
+}
+
+/* ---------- tipografia compartilhada ---------- */
+
+.eyebrow {
+  margin: 0 0 1.25rem;
+  font-family: var(--font-text-stack);
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  margin-right: 0.6em;
+}
+
+.h2 {
+  margin: 0;
+  font-size: clamp(2.25rem, 4.6vw, 4.25rem);
+  line-height: 1.02;
+  letter-spacing: -0.01em;
+  max-width: 16ch;
+  text-wrap: balance;
+}
+
+.h3 {
+  margin: 0;
+  font-size: clamp(1.6rem, 2.4vw, 2.25rem);
+  line-height: 1.1;
+}
+
+.lede {
+  margin: 1.5rem 0 0;
+  max-width: 44ch;
+  font-size: clamp(1rem, 1.15vw, 1.125rem);
+  line-height: 1.65;
+  font-weight: 300;
+  color: var(--muted);
+}
+
+.corpo {
+  margin: 0 0 1.1rem;
+  max-width: 46ch;
+  font-size: 1rem;
+  line-height: 1.7;
+  font-weight: 300;
+}
+
+.textLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 2rem;
+  padding-block: 0.5rem;
+  color: var(--fg);
+  text-decoration: none;
+  font-size: 0.8125rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--line);
+  transition:
+    border-color 0.3s ease,
+    gap 0.3s ease;
+}
+.textLink::after {
+  content: '\2192';
+  letter-spacing: 0;
+  font-size: 1rem;
+  transition: transform 0.3s ease;
+}
+.textLink:hover,
+.textLink:focus-visible {
+  border-color: var(--fg);
+}
+.textLink:hover::after,
+.textLink:focus-visible::after {
+  transform: translateX(0.3rem);
+}
+.textLink:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 4px;
+}
+
+.ficha {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 1rem var(--gap);
+  margin: 2rem 0 0;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--line);
+  max-width: 34rem;
+}
+.ficha dt {
+  font-size: 0.6875rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.ficha dd {
+  margin: 0.35rem 0 0;
+  font-family: var(--font-display-stack);
+  font-size: 1.25rem;
+  line-height: 1.25;
+}
+
+.sectionHead {
+  margin-bottom: clamp(3rem, 7vw, 6rem);
+}
+
+/* ---------- 01 · A casa ---------- */
+
+.casa {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+  padding-top: 6.5rem;
+  padding-bottom: var(--block);
+}
+
+.casaIntro {
+  align-self: start;
+}
+
+.casaH1 {
+  margin: 0;
+  font-size: clamp(2.75rem, 6.2vw, 6.25rem);
+  line-height: 0.98;
+  letter-spacing: -0.015em;
+  max-width: 11ch;
+  text-wrap: balance;
+}
+
+.casaStage {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 4 / 5;
+  background: var(--line);
+}
+.casaStage img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 45% 50%;
+  display: block;
+}
+
+.casaInfo {
+  align-self: end;
+}
+
+.casaH2 {
+  margin: 0 0 1.5rem;
+  font-size: clamp(1.9rem, 2.8vw, 2.75rem);
+  line-height: 1.05;
+  font-style: italic;
+}
+
+.rooms {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: var(--gap);
+  border-top: 1px solid var(--line);
+}
+.rooms li {
+  display: flex;
+  align-items: baseline;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.875rem;
+  font-weight: 300;
+  line-height: 1.35;
+}
+.rooms .num {
+  font-size: 0.6875rem;
+  flex: none;
+  width: 1.9rem;
+  margin: 0;
+}
+
+@media (min-width: 900px) {
+  .casa {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    grid-template-rows: auto 1fr;
+    column-gap: var(--gap);
+    row-gap: 3rem;
+    min-height: 100svh;
+    padding-bottom: clamp(3rem, 8vh, 6rem);
+  }
+  .casaIntro {
+    grid-column: 1 / span 5;
+    grid-row: 1;
+    padding-top: 2rem;
+  }
+  .casaStage {
+    grid-column: 6 / -1;
+    grid-row: 1 / span 2;
+    aspect-ratio: auto;
+    min-height: 34rem;
+    height: calc(100svh - 6.5rem - clamp(3rem, 8vh, 6rem));
+  }
+  .casaInfo {
+    grid-column: 1 / span 4;
+    grid-row: 2;
+  }
+}
+
+/* ---------- 02 · Manifesto ---------- */
+
+.manifesto {
+  padding-block: calc(var(--block) * 1.4);
+}
+
+.manifestoTexto {
+  margin: 0;
+  font-family: var(--font-display-stack);
+  font-weight: 300;
+  font-size: clamp(2.1rem, 5.4vw, 5.5rem);
+  line-height: 1.06;
+  letter-spacing: -0.012em;
+  max-width: 20ch;
+  text-wrap: pretty;
+}
+.manifestoTexto [data-word] {
+  will-change: opacity;
+}
+
+@media (min-width: 900px) {
+  .manifestoTexto {
+    margin-left: calc(100% / 12 * 2);
+  }
+}
+
+/* ---------- 03 · Projetos ---------- */
+
+.projetos {
+  padding-block: var(--block);
+}
+
+.projetoLista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.projeto {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--gap);
+}
+
+.projetoPrincipal {
+  grid-column: 1 / -1;
+  overflow: hidden;
+  background: var(--line);
+}
+.projetoPrincipal img,
+.projetoDetalhe img,
+.estudioFoto img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.projetoDetalhe {
+  grid-column: 3 / -1;
+  margin-top: calc(var(--gap) * -3);
+  overflow: hidden;
+  background: var(--line);
+  outline: clamp(0.5rem, 1vw, 0.9rem) solid var(--bg);
+}
+
+.projetoTexto {
+  grid-column: 1 / -1;
+  position: relative;
+  padding-top: 1rem;
+}
+
+.projetoIndice {
+  display: block;
+  margin-bottom: 0.75rem;
+  font-family: var(--font-display-stack);
+  font-size: 1rem;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 900px) {
+  .projeto {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    grid-template-rows: auto 1fr;
+    row-gap: 0;
+  }
+  .projetoPrincipal {
+    grid-column: 1 / span 6;
+    grid-row: 1 / span 2;
+    align-self: start;
+    aspect-ratio: 4 / 5;
+  }
+  .projetoPrincipal img {
+    height: 100%;
+    object-fit: cover;
+  }
+  .projetoDetalhe {
+    grid-column: 8 / -1;
+    grid-row: 1;
+    margin-top: clamp(3rem, 8vw, 7rem);
+    outline: none;
+  }
+  .projetoTexto {
+    grid-column: 8 / span 4;
+    grid-row: 2;
+    align-self: start;
+    padding-top: 3rem;
+  }
+}
+
+/* ---------- 04 · Processo ---------- */
+
+.processo {
+  padding-block: var(--block);
+}
+
+.etapasWrap {
+  position: relative;
+  border-top: 1px solid var(--line);
+}
+
+.linha {
+  position: absolute;
+  top: -1px;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background: var(--fg);
+  transform-origin: left center;
+}
+
+.etapas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+.etapa {
+  padding: 2rem 0 2.5rem;
+  border-bottom: 1px solid var(--line);
+}
+.etapa:last-child {
+  border-bottom: 0;
+}
+.etapa p {
+  margin: 1rem 0 0;
+  max-width: 34ch;
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  font-weight: 300;
+  color: var(--muted);
+}
+
+.etapaNum {
+  display: block;
+  margin-bottom: 2.5rem;
+  font-family: var(--font-display-stack);
+  font-size: clamp(3rem, 5vw, 4.5rem);
+  line-height: 1;
+  font-weight: 300;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 720px) {
+  .etapas {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--gap);
+  }
+  .etapa:nth-last-child(2) {
+    border-bottom: 0;
+  }
+}
+
+@media (min-width: 1100px) {
+  .etapas {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .etapa {
+    border-bottom: 0;
+    padding-right: var(--gap);
+  }
+  .etapa + .etapa {
+    border-left: 1px solid var(--line);
+    padding-left: var(--gap);
+  }
+}
+
+/* ---------- 05 · Estúdio ---------- */
+
+.estudio {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2.5rem;
+  padding-block: var(--block);
+}
+
+.estudioFoto {
+  overflow: hidden;
+  background: var(--line);
+}
+
+@media (min-width: 900px) {
+  .estudio {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: var(--gap);
+    align-items: end;
+  }
+  .estudioFoto {
+    grid-column: 1 / span 7;
+  }
+  .estudioTexto {
+    grid-column: 9 / -1;
+  }
+}
+
+/* ---------- 06 · Contato (anoitecer) ---------- */
+
+.contato {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 3rem;
+  align-content: center;
+  min-height: 100svh;
+  padding-block: var(--block);
+}
+
+.contatoH2 {
+  margin: 0;
+  font-size: clamp(2.5rem, 5.4vw, 5.25rem);
+  line-height: 1;
+  letter-spacing: -0.012em;
+  max-width: 12ch;
+  text-wrap: balance;
+}
+
+@media (min-width: 900px) {
+  .contato {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: var(--gap);
+    align-items: start;
+  }
+  .contatoHead {
+    grid-column: 1 / span 5;
+  }
+  .contatoForm {
+    grid-column: 7 / -1;
+    padding-top: 2.25rem;
+  }
+}

@@ -9,3 +9,24 @@ describe('site config', () => {
   it('instagram url matches handle', () =>
     expect(site.instagram.url).toBe(`https://www.instagram.com/${site.instagram.handle}/`))
 })
+
+describe('textos institucionais (placeholder)', () => {
+  it('manifesto é uma frase provisória marcada', () => {
+    expect(site.manifesto.texto.split(' ').length).toBeGreaterThan(5)
+    expect(site.manifesto.placeholder).toBe(true)
+  })
+  it('processo segue a sequência real do spec', () => {
+    expect(site.processo.etapas.map((e) => e.titulo)).toEqual([
+      'Briefing',
+      'Estudo preliminar',
+      'Projeto executivo',
+      'Acompanhamento de obra',
+    ])
+    for (const e of site.processo.etapas) expect(e.descricao.length).toBeGreaterThan(20)
+  })
+  it('estúdio tem texto e cidade', () => {
+    expect(site.estudio.texto.length).toBeGreaterThan(0)
+    expect(site.estudio.cidade.length).toBeGreaterThan(0)
+    expect(site.estudio.placeholder).toBe(true)
+  })
+})
