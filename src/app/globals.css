@@ -57,3 +57,12 @@ h3 {
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
 }
+
+/* Fallback de entrada para navegadores sem View Transitions: CSS puro, sem flash. */
+@keyframes page-enter-in { from { opacity: 0; transform: translateY(16px); } }
+@supports not (view-transition-name: none) {
+  .page-enter { animation: page-enter-in 0.8s ease-out both; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-enter { animation: none !important; }
+}

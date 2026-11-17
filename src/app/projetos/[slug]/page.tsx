@@ -57,17 +57,17 @@ export default async function ProjetoPage({ params }: PageProps<'/projetos/[slug
 
         <figure className={styles.cover} style={{ aspectRatio: `${cover.width} / ${cover.height}` }}>
           <ViewTransition name={`projeto-${projeto.slug}`} share="morph" default="none">
-          <Image
-            src={cover.src}
-            width={cover.width}
-            height={cover.height}
-            alt={`${projeto.nome}: vista principal do living`}
-            sizes="100vw"
-            placeholder="blur"
-            blurDataURL={cover.blurDataURL}
-            priority
-            className={styles.coverImg}
-          />
+            <Image
+              src={cover.src}
+              width={cover.width}
+              height={cover.height}
+              alt={`${projeto.nome}: vista principal do living`}
+              sizes="100vw"
+              placeholder="blur"
+              blurDataURL={cover.blurDataURL}
+              priority
+              className={styles.coverImg}
+            />
           </ViewTransition>
         </figure>
 

@@ -36,6 +36,8 @@ export function ProjectGallery({ projectName, rooms, photosByRoom }: Props) {
     if (mq.matches) return
     const ctx = gsap.context(() => {
       gsap.utils.toArray<HTMLElement>('[data-reveal]').forEach((node) => {
+        // Já visível na carga: não esconde nem anima (evita piscar sobre o HTML do servidor).
+        if (node.getBoundingClientRect().top < window.innerHeight * 0.92) return
         gsap.from(node, {
           opacity: 0,
           y: 28,
