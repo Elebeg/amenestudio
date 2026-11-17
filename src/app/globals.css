@@ -1,0 +1,89 @@
+/*
+ * Tipografia (escolha do construtor, Task 1):
+ *  - Display: Cormorant (serifada de alto contraste, elegante para títulos de interiores)
+ *  - Texto: Jost (geométrica leve, limpa e legível em corpo de texto)
+ * Evitadas de propósito: Fraunces e Inter (usadas no protótipo de referência).
+ */
+:root {
+  /* Valores iniciais = paletteAt(0); DaylightController os atualiza com a rolagem */
+  --bg: #efebe5;
+  --fg: #1c1916;
+  --muted: #5e564d;
+  --accent: #9c4623;
+  --line: #cfc8bd;
+  --daylight-smoothing: 0.15s;
+  --font-display-stack: var(--font-display), Georgia, serif;
+  --font-text-stack: var(--font-text), system-ui, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+body {
+  min-height: 100vh;
+  color: var(--fg);
+  background: var(--bg);
+  transition:
+    background-color var(--daylight-smoothing) linear,
+    color var(--daylight-smoothing) linear;
+  font-family: var(--font-text-stack);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display-stack);
+  font-weight: 400;
+}
+
+::selection {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+figure {
+  margin: 0;
+}
+
+/* Transição entre páginas (View Transitions, React 19.3 + Next 16.4) */
+@keyframes vt-fade-in { from { opacity: 0; } }
+@keyframes vt-fade-out { to { opacity: 0; } }
+::view-transition-old(.page-fade) { animation: 220ms ease-out both vt-fade-out; }
+::view-transition-new(.page-fade) { animation: 520ms ease-out 120ms both vt-fade-in; }
+::view-transition-group(.morph) { animation-duration: 600ms; animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1); }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+}
+
+/* Fallback de entrada para navegadores sem View Transitions: CSS puro, sem flash. */
+@keyframes page-enter-in { from { opacity: 0; transform: translateY(16px); } }
+@supports not (view-transition-name: none) {
+  .page-enter { animation: page-enter-in 0.8s ease-out both; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-enter { animation: none !important; }
+}
