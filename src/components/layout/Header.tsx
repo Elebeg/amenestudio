@@ -1,4 +1,7 @@
+'use client'
+
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
 import styles from './Header.module.css'
 
 const links = [
@@ -9,9 +12,20 @@ const links = [
   { href: '/#contato', label: 'Contato' },
 ]
 
+const SCROLL_THRESHOLD = 24
+
 export function Header() {
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    const update = () => setScrolled(window.scrollY > SCROLL_THRESHOLD)
+    update()
+    window.addEventListener('scroll', update, { passive: true })
+    return () => window.removeEventListener('scroll', update)
+  }, [])
+
   return (
-    <header className={styles.header}>
+    <header className={styles.header} data-scrolled={scrolled ? 'true' : 'false'}>
       <Link href="/" className={styles.logo} aria-label="Amene, página inicial">
         AMENE
       </Link>

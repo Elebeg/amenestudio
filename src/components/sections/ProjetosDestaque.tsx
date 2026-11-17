@@ -1,5 +1,6 @@
 import Image from 'next/image'
 import Link from 'next/link'
+import { ViewTransition } from 'react'
 import { getPhoto, getProjects } from '@/content/projetos'
 import s from './home.module.css'
 
@@ -36,15 +37,17 @@ export function ProjetosDestaque() {
           return (
             <li key={p.slug} className={s.projeto}>
               <figure className={s.projetoPrincipal}>
-                <Image
-                  src={principal.src}
-                  width={principal.width}
-                  height={principal.height}
-                  placeholder="blur"
-                  blurDataURL={principal.blurDataURL}
-                  alt={d?.altPrincipal ?? p.nome}
-                  sizes="(min-width: 900px) 58vw, 100vw"
-                />
+                <ViewTransition name={`projeto-${p.slug}`} share="morph" default="none">
+                  <Image
+                    src={principal.src}
+                    width={principal.width}
+                    height={principal.height}
+                    placeholder="blur"
+                    blurDataURL={principal.blurDataURL}
+                    alt={d?.altPrincipal ?? p.nome}
+                    sizes="(min-width: 900px) 58vw, 100vw"
+                  />
+                </ViewTransition>
               </figure>
               {detalhe && (
                 <figure className={s.projetoDetalhe}>
