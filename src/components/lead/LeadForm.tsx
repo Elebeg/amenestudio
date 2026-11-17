@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { site } from '@/config/site'
 import { track } from '@/lib/analytics'
 import { TIPOS, buildWhatsAppUrl, leadSchema } from '@/lib/whatsapp'
+import s from './LeadForm.module.css'
 
 type Campo = 'nome' | 'tipo' | 'cidade' | 'metragem'
 type Valores = Record<Campo, string>
@@ -39,12 +40,14 @@ export function LeadForm() {
 
   const onSubmit = (ev: React.FormEvent) => {
     ev.preventDefault()
-    if (!numero) return
     const { data, erros: todos } = validar(valores)
     if (!data) {
       setErros(todos)
+      const primeiro = CAMPOS.find((c) => todos[c])
+      if (primeiro) document.getElementById(`lead-${primeiro}`)?.focus()
       return
     }
+    if (!numero) return
     const url = buildWhatsAppUrl(numero, data)
     if (!url) return
     track('lead_whatsapp', { tipo: data.tipo })
@@ -62,19 +65,32 @@ export function LeadForm() {
   })
   const erro = (campo: Campo) =>
     erros[campo] ? (
-      <p id={`lead-${campo}-erro`} role="alert">
+      <p id={`lead-${campo}-erro`} role="alert" className={s.erro}>
         {erros[campo]}
       </p>
     ) : null
 
+  const instagram = (
+    <a
+      href={site.instagram.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={s.instagram}
+      onClick={() => track('click_instagram')}
+    >
+      <span>Instagram</span>
+      <span className={s.handle}>@{site.instagram.handle}</span>
+    </a>
+  )
+
   return (
-    <form onSubmit={onSubmit} noValidate>
-      <div>
+    <form onSubmit={onSubmit} noValidate className={s.form}>
+      <div className={s.campo}>
         <label htmlFor="lead-nome">Nome</label>
         <input type="text" autoComplete="name" {...campoProps('nome')} />
         {erro('nome')}
       </div>
-      <div>
+      <div className={s.campo}>
         <label htmlFor="lead-tipo">Tipo de projeto</label>
         <select {...campoProps('tipo')}>
           <option value="">Selecione</option>
@@ -86,32 +102,34 @@ export function LeadForm() {
         </select>
         {erro('tipo')}
       </div>
-      <div>
+      <div className={s.campo}>
         <label htmlFor="lead-cidade">Cidade</label>
         <input type="text" autoComplete="address-level2" {...campoProps('cidade')} />
         {erro('cidade')}
       </div>
-      <div>
+      <div className={s.campo}>
         <label htmlFor="lead-metragem">Metragem em m² (opcional)</label>
         <input type="text" inputMode="decimal" placeholder="Ex.: 120" {...campoProps('metragem')} />
         {erro('metragem')}
       </div>
-      {numero ? (
-        <button type="submit">Conversar no WhatsApp</button>
-      ) : (
-        <>
-          <button type="submit" disabled>
-            Contato direto em breve
-          </button>
-          <p>
-            Enquanto isso, fale com a gente pelo{' '}
-            <a href={site.instagram.url} target="_blank" rel="noopener noreferrer">
-              Instagram @{site.instagram.handle}
-            </a>
-            .
-          </p>
-        </>
-      )}
+      <div className={s.acoes}>
+        {numero ? (
+          <>
+            <button type="submit" className={s.enviar}>
+              Conversar no WhatsApp
+            </button>
+            {instagram}
+          </>
+        ) : (
+          <>
+            <button type="submit" disabled className={s.enviar}>
+              Contato direto em breve
+            </button>
+            <p className={s.aviso}>Enquanto isso, fale com a gente pelo Instagram.</p>
+            {instagram}
+          </>
+        )}
+      </div>
     </form>
   )
 }
