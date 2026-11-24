@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures'
 
 test('página do projeto: 200, h1 com o nome e um h2 por cômodo', async ({ page }) => {
   const res = await page.goto('/projetos/apartamento-pedra')

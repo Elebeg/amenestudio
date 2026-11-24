@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures'
 
 test.describe('formulário de lead (sem número de WhatsApp)', () => {
   test('valida no blur, limpa ao digitar e desabilita o botão', async ({ page }) => {

@@ -1,4 +1,5 @@
-import { test, expect, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { test, expect } from './fixtures'
 import { getProject } from '../../src/content/projetos'
 
 const ROOMS = getProject('apartamento-pedra')!.rooms
