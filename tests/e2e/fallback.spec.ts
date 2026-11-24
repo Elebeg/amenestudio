@@ -15,7 +15,11 @@ async function expectFallback(page: Page) {
   await expect(grid).toBeVisible()
   await expect(grid.getByRole('button')).toHaveCount(ROOMS.length)
   await expect(page.locator('#casa [data-house-canvas]')).toHaveCount(0)
-  await expect(page.locator('#casa img[src*="maquete-fallback"]')).toBeVisible()
+  // a capa (LCP) continua a mesma imagem do palco: nada de trocar por outra depois da hidratação
+  const stageImg = page.locator('#casa [data-casa-stage] img')
+  await expect(stageImg).toHaveCount(1)
+  await expect(stageImg).toBeVisible()
+  expect(await stageImg.getAttribute('fetchpriority')).toBe('high')
 
   const living = grid.getByRole('button', { name: /Living/ })
   await living.click()
