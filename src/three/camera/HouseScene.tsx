@@ -107,7 +107,8 @@ export default function HouseScene(p: HouseSceneProps) {
       frameloop="demand"
       dpr={p.quality === 'high' ? [1, 2] : [1, 1.5]}
       camera={{ position: initialPosition, fov: 35, near: 0.1, far: 200 }}
-      gl={{ antialias: false, powerPreference: 'high-performance', preserveDrawingBuffer: stats }}
+      // low não tem composer (MSAA do EffectComposer): liga o antialias do próprio canvas
+      gl={{ antialias: p.quality === 'low', powerPreference: 'high-performance', preserveDrawingBuffer: stats }}
       onCreated={(st) => {
         setupEnvironment(st)
         st.gl.domElement.addEventListener(

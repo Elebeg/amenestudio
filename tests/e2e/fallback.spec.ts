@@ -3,8 +3,8 @@ import { getProject } from '../../src/content/projetos'
 
 const ROOMS = getProject('apartamento-pedra')!.rooms
 
-// Roda em dois projetos: "no-webgl" (Chrome sem WebGL: cai sozinho no fallback) e "chromium",
-// onde `?3d=0` força o mesmo caminho.
+// Roda em dois projetos: "no-webgl" (Chrome sem WebGL) e "chromium" (Chrome headless sem GPU,
+// que também cai no fallback). Em ambos `?3d=0` força o caminho; o caso sem parâmetro só vale no no-webgl.
 
 async function expectFallback(page: Page) {
   const errors: string[] = []

@@ -62,8 +62,8 @@ function useMedia(query: string, fallback = false): boolean {
 export function HouseSection({ projeto, rooms, cover, coverAlt, stageClassName, infoClassName, eyebrow, h2ClassName, linkClassName }: Props) {
   const [state, setState] = useState<HouseState>({ view: 'overview', lighting: 'manha', panelOpen: false })
   const [mount, setMount] = useState(false)
-  // null até o cliente medir o aparelho: o servidor e o primeiro quadro mostram a capa e a lista
-  const [tier, setTier] = useState<Tier | null>(null)
+  // null só no servidor/hidratação; no cliente a sonda barata roda logo após a montagem
+  const tier = useSyncExternalStore<Tier | null>(() => () => {}, detectTierInBrowser, () => null)
   // o canvas caiu (chunk, contexto WebGL ou exceção do R3F): volta para a capa estática
   const [failed, setFailed] = useState(false)
   const [ready, setReady] = useState(false)
@@ -99,18 +99,12 @@ export function HouseSection({ projeto, rooms, cover, coverAlt, stageClassName, 
 
   // carrega o canvas quando o navegador estiver ocioso (a capa é o LCP)
   useEffect(() => {
+    if (!tier || tier === 'none') return
     const ric = window.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 200))
     const cic = window.cancelIdleCallback ?? window.clearTimeout
-    const id = ric(
-      () => {
-        const t = detectTierInBrowser()
-        setTier(t)
-        if (t !== 'none') setMount(true)
-      },
-      { timeout: 1500 },
-    )
+    const id = ric(() => setMount(true), { timeout: 1500 })
     return () => cic(id)
-  }, [])
+  }, [tier])
 
   // fora da tela: sem auto-rotação; largura do palco para o deslocamento do painel
   useEffect(() => {
@@ -176,6 +170,7 @@ export function HouseSection({ projeto, rooms, cover, coverAlt, stageClassName, 
   const panelW = desktop && panelRoom ? Math.min(400, Math.max(300, box.w * 0.36)) : 0
   const shiftPx = panelW / 2
   const aspect = box.h > 0 ? (box.w - panelW) / box.h : 0
+  // toque (ponteiro grosso) também é `low`: ver o comentário em lib/quality.ts
   const quality = coarse || tier === 'low' ? 'low' : 'high'
 
   return (
@@ -280,7 +275,7 @@ export function HouseSection({ projeto, rooms, cover, coverAlt, stageClassName, 
         </h2>
         <div ref={nav}>
           {noCanvas ? (
-            <HouseFallback rooms={rooms} view={state.view} onSelect={(id, el) => select(id, el)} />
+            <HouseFallback rooms={rooms} view={state.view} onSelect={select} />
           ) : (
             <RoomNav rooms={navRooms} view={state.view} onSelect={select} />
           )}

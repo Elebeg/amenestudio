@@ -49,15 +49,28 @@ export function probeWebgl(params: URLSearchParams): boolean {
   }
 }
 
-/** Lê o ambiente do navegador (só no cliente). */
+let cached: Tier | undefined
+
+/**
+ * Lê o ambiente do navegador (só no cliente) e guarda o resultado: a sonda cria um contexto
+ * WebGL e os parâmetros da URL não mudam durante a visita.
+ */
 export function detectTierInBrowser(): Tier {
+  if (cached) return cached
   const params = new URLSearchParams(window.location.search)
   const nav = navigator as Navigator & { deviceMemory?: number; connection?: { saveData?: boolean } }
-  return detectTier({
+  return (cached = detectTier({
     webgl: probeWebgl(params),
     deviceMemory: nav.deviceMemory,
     hardwareConcurrency: nav.hardwareConcurrency,
     saveData: nav.connection?.saveData,
     params,
-  })
+  }))
 }
+
+/**
+ * Ponteiro grosso (celular/tablet) também usa `low`, mesmo com 8 GB e 8 núcleos. Isto é mais
+ * rígido que a regra do briefing (`detectTier`), de propósito: aparelhos de toque esquentam e
+ * gastam bateria com sombras 4096 e AO, e a Task 10 já os tratava como `low`.
+ * A combinação fica em HouseSection (`coarse || tier === 'low'`).
+ */

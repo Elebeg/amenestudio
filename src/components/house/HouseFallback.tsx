@@ -34,7 +34,7 @@ export function HouseFallback({ rooms, view, onSelect }: Props) {
                   {foto && (
                     <Image
                       src={foto.src}
-                      alt={`Capa de ${r.nome}`}
+                      alt=""
                       fill
                       sizes="(min-width: 900px) 16vw, 45vw"
                       placeholder="blur"
