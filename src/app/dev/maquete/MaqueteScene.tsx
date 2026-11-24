@@ -14,7 +14,7 @@ import type { Lighting } from '@/three/apartment/materials'
  * Cena de verificação da maquete (só desenvolvimento). As luzes daqui são PROVISÓRIAS:
  * a iluminação definitiva (manhã/noite, N8AO) é da Task 10.
  *
- * Parâmetros: ?view=overview|living|<RoomId>  ?luz=manha|noite  ?ao=0
+ * Parâmetros: ?view=overview|plano|<RoomId>  ?luz=manha|noite  ?ao=0
  */
 
 type Params = { view: string; luz: Lighting; ao: boolean }
@@ -29,6 +29,10 @@ function readParams(): Params {
 }
 
 function cameraFor(view: string): { pos: [number, number, number]; target: [number, number, number] } {
+  if (view === 'plano') {
+    // planta vista de cima (verificação da disposição)
+    return { pos: [0, 30, 0.01], target: [0, 0, 0] }
+  }
   const room = APARTMENT.rooms.find((r) => r.id === view)
   if (!room) {
     // visão geral: r 27, phi .95 (mesmos números da Task 10)
@@ -42,7 +46,7 @@ function cameraFor(view: string): { pos: [number, number, number]; target: [numb
   const dim = Math.max(room.rect.x1 - room.rect.x0, room.rect.z1 - room.rect.z0)
   const r = Math.max(8, dim * 1.9)
   const phi = 0.68
-  // quartos (fileira sul) vistos do sul; área social vista do norte — pela parede externa que some
+  // cômodos da metade sul vistos do sul; os da metade norte, do norte — pela parede externa que some
   const dir = cz > 0 ? 1 : -1
   return {
     pos: [cx + r * Math.sin(phi) * 0.42, r * Math.cos(phi), cz + dir * r * Math.sin(phi) * 0.91],
