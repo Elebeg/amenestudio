@@ -27,6 +27,22 @@ describe('conteúdo do projeto', () => {
     expect(all).toContain('IMG_5034')
     expect(all).toContain('IMG_5050')
   })
+  it('sete cômodos (quatro quartos): a suíte ripada reúne as fotos do antigo quarto com escrivaninha', () => {
+    expect(projeto.rooms.map((r) => r.id)).toEqual([
+      'cozinha',
+      'living',
+      'lavabo',
+      'suite-casal',
+      'quarto-solteiro',
+      'suite-ripada',
+      'quarto-espelho',
+    ])
+    const ripada = projeto.rooms.find((r) => r.id === 'suite-ripada')!
+    expect(ripada.nome).toBe('Suíte com ripado')
+    expect(ripada.fotos).toEqual(['IMG_4924', 'IMG_4951', 'IMG_4943', 'IMG_4946'])
+    expect(ripada.capa).toBe('IMG_4924')
+    expect(projeto.rooms.some((r) => (r.id as string) === 'quarto-escrivaninha')).toBe(false)
+  })
   it('slug inexistente retorna undefined; getPhoto lança', () => {
     expect(getProject('nao-existe')).toBeUndefined()
     expect(() => getPhoto('nada')).toThrow()

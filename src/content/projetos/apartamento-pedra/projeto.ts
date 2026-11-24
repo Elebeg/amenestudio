@@ -51,15 +51,10 @@ export const apartamentoPedra: Projeto = {
     }),
     room({
       id: 'suite-ripada',
-      nome: 'Suíte com cabeceira ripada',
-      descricao: 'Cabeceira ripada em madeira e pendentes de palha criam um ambiente quente e texturizado.',
-      fotos: f(4924),
-    }),
-    room({
-      id: 'quarto-escrivaninha',
-      nome: 'Quarto com escrivaninha curva',
-      descricao: 'Escrivaninha de desenho curvo e ripado vertical que dão ritmo à parede.',
-      fotos: f(4943, 4946, 4951),
+      nome: 'Suíte com ripado',
+      descricao:
+        'Cabeceira ripada em madeira e pendentes de palha; do outro lado, escrivaninha de desenho curvo diante de um ripado vertical branco.',
+      fotos: f(4924, 4951, 4943, 4946),
     }),
     room({
       id: 'quarto-espelho',
