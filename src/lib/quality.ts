@@ -13,6 +13,11 @@ export type TierEnv = {
  * none: sem WebGL (ou `?3d=0`) → imagem estática e grade de cômodos.
  * low: economia de dados ou aparelho modesto → DPR ≤ 1,5, sombras 1024, sem pós-processamento.
  * high: o resto.
+ *
+ * Ponteiro grosso (celular/tablet) também usa `low` na maquete, mesmo com 8 GB e 8 núcleos: é
+ * mais rígido que esta regra do briefing, de propósito (aparelhos de toque esquentam e gastam
+ * bateria com sombras 4096 e AO). A combinação fica em HouseSection (`coarse || tier === 'low'`);
+ * a abertura, no toque, usa o quadro estático (`introSceneKind` em lib/introMachine).
  */
 export function detectTier(env: TierEnv): Tier {
   if (!env.webgl || env.params.get('3d') === '0') return 'none'
@@ -29,6 +34,8 @@ export function detectTier(env: TierEnv): Tier {
 /**
  * WebGL utilizável de verdade. Renderizador por software (SwiftShader, llvmpipe…) conta como
  * "sem WebGL"; `?maquete=1` pula só essa checagem (testes e2e com SwiftShader), nunca a de WebGL.
+ * Fica ativo também em produção, de propósito: os e2e rodam contra o build de produção e o
+ * parâmetro só troca a capa pela maquete numa máquina que já tem WebGL (sem risco para o visitante).
  */
 export function probeWebgl(params: URLSearchParams): boolean {
   try {
@@ -67,10 +74,3 @@ export function detectTierInBrowser(): Tier {
     params,
   }))
 }
-
-/**
- * Ponteiro grosso (celular/tablet) também usa `low`, mesmo com 8 GB e 8 núcleos. Isto é mais
- * rígido que a regra do briefing (`detectTier`), de propósito: aparelhos de toque esquentam e
- * gastam bateria com sombras 4096 e AO, e a Task 10 já os tratava como `low`.
- * A combinação fica em HouseSection (`coarse || tier === 'low'`).
- */

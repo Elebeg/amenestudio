@@ -54,7 +54,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           {children}
           <Footer />
         </SmoothScroll>
-        <WhatsAppFab visible />
+        <WhatsAppFab />
         <DaylightController />
         <Analytics />
       </body>
