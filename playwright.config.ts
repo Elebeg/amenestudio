@@ -7,7 +7,7 @@ export default defineConfig({
   fullyParallel: true,
   use: { baseURL: `http://localhost:${port}` },
   projects: [
-    { name: 'chromium', testIgnore: /house\.spec\.ts/, use: { ...devices['Desktop Chrome'] } },
+    { name: 'chromium', testIgnore: /(house|fallback)\.spec\.ts/, use: { ...devices['Desktop Chrome'] } },
     {
       // maquete 3D: WebGL por software no headless, para o canvas realmente renderizar
       name: 'webgl',
@@ -18,6 +18,12 @@ export default defineConfig({
         reducedMotion: 'reduce',
         launchOptions: { args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] },
       },
+    },
+    {
+      // sem WebGL: o fallback estático tem de funcionar sozinho
+      name: 'no-webgl',
+      testMatch: /fallback\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'], launchOptions: { args: ['--disable-webgl', '--disable-gpu'] } },
     },
   ],
   webServer: {

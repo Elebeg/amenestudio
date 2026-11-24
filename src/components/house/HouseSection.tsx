@@ -10,6 +10,8 @@ import type { HouseState, ViewId } from '@/three/camera/cameraMath'
 import { RoomNav, StageControls, type NavRoom } from './RoomNav'
 import { RoomPanel, type PanelRoom } from './RoomPanel'
 import { SceneBoundary } from './SceneBoundary'
+import { HouseFallback } from './HouseFallback'
+import { detectTierInBrowser, type Tier } from '@/lib/quality'
 import { APARTMENT } from '@/three/apartment/layout'
 import s from './house.module.css'
 
@@ -53,30 +55,6 @@ function useMedia(query: string, fallback = false): boolean {
 }
 
 /**
- * A maquete só monta com WebGL de verdade. Renderizador por software (SwiftShader, llvmpipe…)
- * conta como "aparelho muito fraco": fica a imagem estática e a lista de ambientes com as fotos.
- * `?maquete=1` força o canvas (testes e2e com SwiftShader).
- */
-function canRunMaquete(): boolean {
-  try {
-    const c = document.createElement('canvas')
-    const gl = (c.getContext('webgl2') ?? c.getContext('webgl')) as WebGLRenderingContext | null
-    if (!gl) return false
-    // ?maquete=1 pula só a checagem de renderizador por software, nunca a de WebGL
-    if (new URLSearchParams(window.location.search).get('maquete') === '1') {
-      gl.getExtension('WEBGL_lose_context')?.loseContext()
-      return true
-    }
-    const info = gl.getExtension('WEBGL_debug_renderer_info')
-    const renderer = String(info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER))
-    gl.getExtension('WEBGL_lose_context')?.loseContext()
-    return !/swiftshader|llvmpipe|software|basic render/i.test(renderer)
-  } catch {
-    return false
-  }
-}
-
-/**
  * 01 · A casa: a maquete 3D interativa no lugar da capa estática.
  * A capa continua por baixo até o canvas ficar pronto (sem salto de layout nem caixa vazia);
  * sem WebGL ela permanece, e a lista de ambientes continua abrindo o painel com as fotos.
@@ -84,6 +62,8 @@ function canRunMaquete(): boolean {
 export function HouseSection({ projeto, rooms, cover, coverAlt, stageClassName, infoClassName, eyebrow, h2ClassName, linkClassName }: Props) {
   const [state, setState] = useState<HouseState>({ view: 'overview', lighting: 'manha', panelOpen: false })
   const [mount, setMount] = useState(false)
+  // null até o cliente medir o aparelho: o servidor e o primeiro quadro mostram a capa e a lista
+  const [tier, setTier] = useState<Tier | null>(null)
   // o canvas caiu (chunk, contexto WebGL ou exceção do R3F): volta para a capa estática
   const [failed, setFailed] = useState(false)
   const [ready, setReady] = useState(false)
@@ -119,10 +99,16 @@ export function HouseSection({ projeto, rooms, cover, coverAlt, stageClassName, 
 
   // carrega o canvas quando o navegador estiver ocioso (a capa é o LCP)
   useEffect(() => {
-    if (!canRunMaquete()) return
     const ric = window.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 200))
     const cic = window.cancelIdleCallback ?? window.clearTimeout
-    const id = ric(() => setMount(true), { timeout: 1500 })
+    const id = ric(
+      () => {
+        const t = detectTierInBrowser()
+        setTier(t)
+        if (t !== 'none') setMount(true)
+      },
+      { timeout: 1500 },
+    )
     return () => cic(id)
   }, [])
 
@@ -182,29 +168,42 @@ export function HouseSection({ projeto, rooms, cover, coverAlt, stageClassName, 
     const a = document.activeElement
     return !a || a === document.body || !!stage.current?.contains(a) || !!nav.current?.contains(a)
   }, [])
-  const live = mount && !failed
+  // sem WebGL, `?3d=0` ou contexto perdido: imagem estática + grade de cômodos
+  const noCanvas = tier === 'none' || failed
+  const live = mount && !failed && tier !== 'none'
   const labelsOn = live && ready && state.view === 'overview'
   // mesma regra do CSS: clamp(300px, 36%, 400px)
   const panelW = desktop && panelRoom ? Math.min(400, Math.max(300, box.w * 0.36)) : 0
   const shiftPx = panelW / 2
   const aspect = box.h > 0 ? (box.w - panelW) / box.h : 0
-  const quality = coarse ? 'low' : 'high'
+  const quality = coarse || tier === 'low' ? 'low' : 'high'
 
   return (
     <>
       <div className={`${stageClassName} ${s.stage}`} data-casa-stage ref={stage} data-ready={ready} data-lighting={state.lighting}>
         <div className={s.viewport}>
-          <Image
-            className={s.cover}
-            src={cover.src}
-            width={cover.width}
-            height={cover.height}
-            placeholder="blur"
-            blurDataURL={cover.blurDataURL}
-            alt={coverAlt}
-            sizes="(min-width: 900px) 60vw, 100vw"
-            preload
-          />
+          {noCanvas ? (
+            <Image
+              className={s.fbImage}
+              src="/maquete-fallback.webp"
+              width={1600}
+              height={1000}
+              alt="Planta do apartamento em maquete: visão geral dos sete ambientes"
+              sizes="(min-width: 900px) 60vw, 100vw"
+            />
+          ) : (
+            <Image
+              className={s.cover}
+              src={cover.src}
+              width={cover.width}
+              height={cover.height}
+              placeholder="blur"
+              blurDataURL={cover.blurDataURL}
+              alt={coverAlt}
+              sizes="(min-width: 900px) 60vw, 100vw"
+              preload
+            />
+          )}
           {live && (
             <div className={s.canvasLayer} data-house-canvas>
               <SceneBoundary onError={onFail}>
@@ -280,7 +279,11 @@ export function HouseSection({ projeto, rooms, cover, coverAlt, stageClassName, 
           {projeto.nome}
         </h2>
         <div ref={nav}>
-          <RoomNav rooms={navRooms} view={state.view} onSelect={select} />
+          {noCanvas ? (
+            <HouseFallback rooms={rooms} view={state.view} onSelect={(id, el) => select(id, el)} />
+          ) : (
+            <RoomNav rooms={navRooms} view={state.view} onSelect={select} />
+          )}
         </div>
         <Link href={projectHref} className={linkClassName}>
           Ver projeto completo
