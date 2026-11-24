@@ -29,6 +29,24 @@ export function setIntroPhase(next: IntroPhase) {
   listeners.forEach((l) => l())
 }
 
+/**
+ * A camada da abertura já saiu do DOM (ou nunca existiu)? `done` chega antes: a saída ainda
+ * dissolve por ~1 s com o canvas do amanhecer montado. A maquete espera por isto para não
+ * abrir um segundo contexto WebGL por cima do primeiro.
+ */
+let gone: boolean | null = null
+
+function getIntroGone(): boolean {
+  if (gone === null) gone = !document.getElementById(INTRO_LAYER_ID)
+  return gone
+}
+
+export function setIntroGone() {
+  if (gone === true) return
+  gone = true
+  listeners.forEach((l) => l())
+}
+
 function subscribe(cb: () => void) {
   listeners.add(cb)
   return () => {
@@ -41,8 +59,7 @@ export function useIntroPhase(): IntroPhase {
   return useSyncExternalStore(subscribe, getIntroPhase, () => 'black')
 }
 
-/** A abertura já chegou ao clarão (ou terminou): o conteúdo por trás pode carregar o 3D. */
-export function useIntroReleased(): boolean {
-  const p = useIntroPhase()
-  return p === 'flash' || p === 'done'
+/** No servidor e na hidratação: `false` (o 3D só entra no cliente, depois da abertura). */
+export function useIntroGone(): boolean {
+  return useSyncExternalStore(subscribe, getIntroGone, () => false)
 }

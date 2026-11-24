@@ -13,9 +13,29 @@ export type SiteConfig = {
   estudio: { titulo: string; texto: string[]; cidade: string; placeholder: boolean }
 }
 
+type SiteEnv = { NEXT_PUBLIC_SITE_URL?: string; VERCEL_PROJECT_PRODUCTION_URL?: string }
+
+/**
+ * URL pública do site (metadataBase, canonical, Open Graph, sitemap, robots e JSON-LD).
+ * 1. NEXT_PUBLIC_SITE_URL, quando o domínio definitivo existir (ver .env.example);
+ * 2. o domínio de produção que a Vercel injeta no build (sem protocolo);
+ * 3. localhost em desenvolvimento.
+ * Barra final removida: as rotas são montadas como `${site.url}/caminho`.
+ */
+export function resolveSiteUrl(env: SiteEnv): string {
+  const explicit = env.NEXT_PUBLIC_SITE_URL?.trim()
+  const vercel = env.VERCEL_PROJECT_PRODUCTION_URL?.trim()
+  const url = explicit || (vercel ? `https://${vercel}` : 'http://localhost:3000')
+  return url.replace(/\/+$/, '')
+}
+
 export const site: SiteConfig = {
   name: 'Amene',
-  url: 'https://amenestudio.vercel.app', // provisório
+  // acesso literal a cada variável: o Next só embute no bundle do cliente `process.env.NOME`
+  url: resolveSiteUrl({
+    NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
+    VERCEL_PROJECT_PRODUCTION_URL: process.env.VERCEL_PROJECT_PRODUCTION_URL,
+  }),
   description: 'Escritório de arquitetura e interiores Amene.',
   whatsapp: { number: null, placeholder: true },
   instagram: { handle: 'amenestudio', url: 'https://www.instagram.com/amenestudio/', placeholder: true },

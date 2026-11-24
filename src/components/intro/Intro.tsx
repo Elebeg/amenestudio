@@ -10,6 +10,7 @@ import { detectTierInBrowser } from '@/lib/quality'
 import {
   introMode,
   introReducer,
+  introSceneKind,
   markIntroSeen,
   phaseStart,
   readIntroSeen,
@@ -17,7 +18,7 @@ import {
 } from '@/lib/introMachine'
 import { FallingLetters } from './FallingLetters'
 import { IntroDawnScene, type DawnKind, type StillPhoto } from './IntroDawnScene'
-import { INTRO_LAYER_ID, setIntroPhase } from './introStore'
+import { INTRO_LAYER_ID, setIntroGone, setIntroPhase } from './introStore'
 import s from './intro.module.css'
 
 /** Amanhecer: começa no marco `dawn` e a rampa inteira dura até pouco depois do clarão. */
@@ -61,13 +62,16 @@ export function Intro({ still }: { still: StillPhoto }) {
   const pathname = usePathname()
   const [active] = useState(() => pathname === '/')
   useEffect(() => {
-    if (!active) setIntroPhase('done')
+    if (!active) {
+      setIntroPhase('done')
+      setIntroGone()
+    }
   }, [active])
   if (!active) return null
   return <IntroRun still={still} />
 }
 
-type IntroConfig = { mode: IntroMode; kind: DawnKind; quality: 'high' | 'low'; frozen: number | null }
+type IntroConfig = { mode: IntroMode; kind: DawnKind; frozen: number | null }
 
 function sessionStore(): Storage | undefined {
   try {
@@ -78,28 +82,24 @@ function sessionStore(): Storage | undefined {
 }
 
 let config: IntroConfig | null = null
-/** Modo, tipo de cena e qualidade: decididos uma vez por carga do documento, só no cliente. */
+/** Modo e tipo de cena: decididos uma vez por carga do documento, só no cliente. */
 function readConfig(): IntroConfig {
   if (config) return config
   const frozen = frozenTime()
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   const mode = frozen !== null ? 'full' : introMode({ seenThisSession: readIntroSeen(sessionStore()), reducedMotion: reduced })
-  let kind: DawnKind = 'still'
-  let quality: 'high' | 'low' = 'high'
-  if (mode === 'full') {
-    if (site.intro.videoSrc) kind = 'video'
-    else {
-      const tier = detectTierInBrowser()
-      if (tier !== 'none') {
-        kind = 'canvas'
-        // o chunk da cena começa a baixar já (a espera no preto é curta)
-        void import('@/three/intro/DawnCanvas')
-        const coarse = window.matchMedia('(pointer: coarse)').matches
-        quality = coarse || tier === 'low' ? 'low' : 'high'
-      }
-    }
-  }
-  return (config = { mode, kind, quality, frozen })
+  // a sonda de WebGL (cria um contexto) só roda quando o canvas ainda é uma opção
+  const hasVideo = !!site.intro.videoSrc
+  const kind: DawnKind = introSceneKind({
+    mode,
+    hasVideo,
+    tier: mode === 'full' && !hasVideo ? detectTierInBrowser() : 'none',
+    coarsePointer: window.matchMedia('(pointer: coarse)').matches,
+  })
+  // o chunk da cena começa a baixar já (a espera no preto é curta); se falhar, o
+  // dynamic() da cena tenta de novo e o DawnBoundary cai no quadro estático
+  if (kind === 'canvas') void import('@/three/intro/DawnCanvas').catch(() => {})
+  return (config = { mode, kind, frozen })
 }
 const noSubscribe = () => () => {}
 
@@ -109,7 +109,6 @@ function IntroRun({ still }: { still: StillPhoto }) {
   const mode = cfg?.mode ?? null
   const [failed, setFailed] = useState(false)
   const kind: DawnKind = failed ? 'still' : (cfg?.kind ?? 'still')
-  const quality = cfg?.quality ?? 'high'
   const [phase, dispatch] = useReducer(introReducer, 'black')
   const [sceneReady, setSceneReady] = useState(false)
   const [skipped, setSkipped] = useState(false)
@@ -216,6 +215,11 @@ function IntroRun({ still }: { still: StillPhoto }) {
   }, [])
   const onSceneFail = useCallback(() => setFailed(true), [])
 
+  // camada fora do DOM (e o canvas do amanhecer desmontado): a maquete pode abrir o seu contexto
+  useEffect(() => {
+    if (gone) setIntroGone()
+  }, [gone])
+
   if (gone) return null
   const showScene = mode === 'full' || mode === 'reduced'
   return (
@@ -253,7 +257,8 @@ function IntroRun({ still }: { still: StillPhoto }) {
               clock={clock}
               start={DAWN_START}
               duration={DAWN_DURATION}
-              quality={quality}
+              // canvas só em aparelho `high` sem toque (introSceneKind): qualidade cheia
+              quality="high"
               onReady={onSceneReady}
               onFail={onSceneFail}
               animateStill={mode === 'full'}

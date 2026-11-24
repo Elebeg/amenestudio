@@ -4,12 +4,13 @@ import dynamic from 'next/dynamic'
 import { getImageProps } from 'next/image'
 import { Component, useEffect, useMemo, type ReactNode, type RefObject } from 'react'
 import { site } from '@/config/site'
+import type { IntroSceneKind } from '@/lib/introMachine'
 import s from './intro.module.css'
 
 // three + R3F + a maquete: só no cliente, e só quando a abertura completa vai mesmo tocar
 const DawnCanvas = dynamic(() => import('@/three/intro/DawnCanvas'), { ssr: false })
 
-export type DawnKind = 'video' | 'canvas' | 'still'
+export type DawnKind = IntroSceneKind
 
 type Props = {
   kind: DawnKind

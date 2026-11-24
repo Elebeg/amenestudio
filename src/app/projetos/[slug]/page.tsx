@@ -71,7 +71,7 @@ export default async function ProjetoPage({ params }: PageProps<'/projetos/[slug
               sizes="100vw"
               placeholder="blur"
               blurDataURL={cover.blurDataURL}
-              priority
+              preload
               className={styles.coverImg}
             />
           </ViewTransition>

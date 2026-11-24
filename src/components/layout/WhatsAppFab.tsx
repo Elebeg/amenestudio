@@ -10,13 +10,13 @@ import styles from './WhatsAppFab.module.css'
  * Botão flutuante do WhatsApp. Fora da home ele já vem visível no HTML (não depende de JS);
  * na home espera a abertura terminar (`done`).
  */
-export function WhatsAppFab({ visible }: { visible: boolean }) {
+export function WhatsAppFab() {
   const home = usePathname() === '/'
   const phase = useIntroPhase()
   const introDone = !home || phase === 'done'
   const number = site.whatsapp.number
   if (!number) return null
-  const show = visible && introDone
+  const show = introDone
   return (
     <a
       href={`https://wa.me/${number}`}

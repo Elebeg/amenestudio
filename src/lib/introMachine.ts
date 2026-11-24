@@ -45,6 +45,26 @@ export function introMode(o: { seenThisSession: boolean; reducedMotion: boolean 
   return 'full'
 }
 
+export type IntroSceneKind = 'video' | 'canvas' | 'still'
+
+/**
+ * Cena do amanhecer no modo full: vídeo (Fase 2) > canvas WebGL > quadro estático (CSS).
+ * Toque (ponteiro grosso) e aparelhos `low`/`none` ficam no quadro estático: a primeira visita
+ * no celular não baixa o three só para a abertura (a maquete da #casa carrega depois, se couber).
+ * Fora do modo full a cena é sempre o quadro estático.
+ */
+export function introSceneKind(o: {
+  mode: IntroMode
+  hasVideo: boolean
+  tier: 'none' | 'low' | 'high'
+  coarsePointer: boolean
+}): IntroSceneKind {
+  if (o.mode !== 'full') return 'still'
+  if (o.hasVideo) return 'video'
+  if (o.tier !== 'high' || o.coarsePointer) return 'still'
+  return 'canvas'
+}
+
 export function introTimeline(mode: IntroMode): Array<{ phase: IntroPhase; at: number }> {
   return TIMELINES[mode].map((s) => ({ ...s }))
 }

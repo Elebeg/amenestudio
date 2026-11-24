@@ -72,7 +72,9 @@ test.describe('home: maquete 3D', () => {
 
   test('sem ?maquete=1, WebGL por software fica na capa estática e a lista ainda abre o painel', async ({ page }) => {
     await page.goto('/')
-    await page.waitForTimeout(2500)
+    // sinal determinístico: a sonda de qualidade já rodou e classificou o SwiftShader como `none`
+    // (esse nível nunca monta o canvas, então a contagem abaixo não depende de tempo)
+    await expect(page.locator('[data-casa-stage]')).toHaveAttribute('data-tier', 'none')
     await expect(page.locator('[data-house-canvas]')).toHaveCount(0)
     await expect(page.locator('[data-casa-stage] img').first()).toBeVisible()
     // o painel mostra min(4, fotos do cômodo): esperado derivado do conteúdo, não fixo

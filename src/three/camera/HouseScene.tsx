@@ -70,6 +70,12 @@ function ReadySignal({ onReady }: { onReady: () => void }) {
 }
 
 /**
+ * `?stats` liga as estatísticas abaixo. Como o `?abertura` da abertura, só fora de produção ou
+ * com NEXT_PUBLIC_INTRO_DEBUG definido no build (preserveDrawingBuffer custa desempenho).
+ */
+const STATS_DEBUG = process.env.NODE_ENV !== 'production' || !!process.env.NEXT_PUBLIC_INTRO_DEBUG
+
+/**
  * Estatísticas do renderer para verificação (`?stats` na URL): draw calls somando todas as
  * passagens do quadro (sombra, cena, N8AO, tone mapping).
  */
@@ -100,7 +106,7 @@ function Stats() {
 const initialPosition = sphericalToPosition(VIEWS.overview)
 
 export default function HouseScene(p: HouseSceneProps) {
-  const stats = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('stats')
+  const stats = STATS_DEBUG && typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('stats')
   return (
     <Canvas
       shadows="percentage"

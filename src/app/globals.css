@@ -12,6 +12,8 @@
   --accent: #9c4623;
   --line: #cfc8bd;
   --daylight-smoothing: 0.15s;
+  /* altura do cabeçalho fixo (Header.module.css): logo + 1rem de respiro em cima e embaixo */
+  --header-h: 4.5rem;
   --font-display-stack: var(--font-display), Georgia, serif;
   --font-text-stack: var(--font-text), system-ui, sans-serif;
 }
@@ -20,6 +22,11 @@
 *::before,
 *::after {
   box-sizing: border-box;
+}
+
+html {
+  /* âncoras (/#casa, #room-…) param abaixo do cabeçalho fixo */
+  scroll-padding-top: var(--header-h);
 }
 
 html,
@@ -67,6 +74,13 @@ h3 {
 
 figure {
   margin: 0;
+}
+
+/* no celular o cabeçalho quebra em duas linhas (logo + navegação) */
+@media (max-width: 640px) {
+  :root {
+    --header-h: 5.75rem;
+  }
 }
 
 /* Transição entre páginas (View Transitions, React 19.3 + Next 16.4) */
