@@ -3,6 +3,7 @@
 import { useLayoutEffect, useRef, type ReactNode } from 'react'
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
 /**
  * Peças reutilizáveis da maquete. Toda geometria passa por um cache global
@@ -329,7 +330,58 @@ export function Curtain({ w, h, p, rotY = 0, m }: { w: number; h: number; p: V3;
   )
 }
 
-/** Planta: vaso torneado + folhagem em blocos suaves. */
+/**
+ * Folhagem arquitetônica: hastes delgadas com uma folha lanceolada (plano de duas faces) na ponta,
+ * à maneira das plantas de maquete. Tudo numa única geometria (uma draw call por planta).
+ */
+function plantFoliage(): THREE.BufferGeometry {
+  const leafShape = new THREE.Shape()
+  leafShape.moveTo(0, 0)
+  leafShape.bezierCurveTo(0.055, 0.06, 0.06, 0.2, 0, 0.3)
+  leafShape.bezierCurveTo(-0.06, 0.2, -0.055, 0.06, 0, 0)
+  const leaf = new THREE.ShapeGeometry(leafShape, 6)
+  const parts: THREE.BufferGeometry[] = []
+  const rand = (() => {
+    let s = 7
+    return () => ((s = (s * 16807) % 2147483647) / 2147483647)
+  })()
+  const n = 9
+  const m4 = new THREE.Matrix4()
+  const q = new THREE.Quaternion()
+  const e = new THREE.Euler()
+  for (let i = 0; i < n; i++) {
+    const az = (i / n) * Math.PI * 2 + rand() * 0.5
+    const tilt = 0.12 + rand() * 0.32
+    const len = 0.42 + rand() * 0.55
+    // haste: cilindro fino inclinado para fora a partir da boca do vaso
+    const stem = new THREE.CylinderGeometry(0.006, 0.009, len, 4, 1, true)
+    stem.translate(0, len / 2, 0)
+    e.set(0, az, tilt, 'YXZ')
+    q.setFromEuler(e)
+    m4.compose(new THREE.Vector3(0, 0.34, 0), q, new THREE.Vector3(1, 1, 1))
+    stem.applyMatrix4(m4)
+    parts.push(stem)
+    // folha na ponta, inclinada um pouco além da haste; duas faces (frente e verso girado)
+    const tip = new THREE.Vector3(0, len, 0).applyMatrix4(m4)
+    const s = 0.8 + rand() * 0.6
+    for (const flip of [0, Math.PI]) {
+      const g = leaf.clone()
+      g.rotateY(flip)
+      g.scale(s, s, s)
+      e.set(0, az, tilt + 0.35 + rand() * 0.25, 'YXZ')
+      q.setFromEuler(e)
+      m4.compose(tip, q, new THREE.Vector3(1, 1, 1))
+      g.applyMatrix4(m4)
+      parts.push(g)
+    }
+  }
+  leaf.dispose()
+  const merged = mergeGeometries(parts.map((g) => (g.index ? g.toNonIndexed() : g)))
+  parts.forEach((g) => g.dispose())
+  return merged
+}
+
+/** Planta: vaso torneado + hastes e folhas delgadas. */
 export function Plant({
   p,
   s = 1,
@@ -341,7 +393,7 @@ export function Plant({
   pot: THREE.Material
   leaf: THREE.Material
 }) {
-  const g = cachedGeometry('leaf', () => new THREE.IcosahedronGeometry(1, 2))
+  const g = cachedGeometry('plant-foliage', plantFoliage)
   return (
     <group position={p} scale={s}>
       <Lathe
@@ -357,9 +409,7 @@ export function Plant({
         m={pot}
         p={[0, 0, 0]}
       />
-      <mesh geometry={g} material={leaf} position={[0, 0.62, 0]} scale={[0.3, 0.32, 0.28]} castShadow receiveShadow />
-      <mesh geometry={g} material={leaf} position={[0.14, 0.82, 0.05]} scale={[0.22, 0.24, 0.2]} castShadow receiveShadow />
-      <mesh geometry={g} material={leaf} position={[-0.1, 0.9, -0.06]} scale={[0.18, 0.2, 0.18]} castShadow receiveShadow />
+      <mesh geometry={g} material={leaf} castShadow receiveShadow />
     </group>
   )
 }

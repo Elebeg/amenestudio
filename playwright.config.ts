@@ -6,7 +6,20 @@ export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
   use: { baseURL: `http://localhost:${port}` },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    { name: 'chromium', testIgnore: /house\.spec\.ts/, use: { ...devices['Desktop Chrome'] } },
+    {
+      // maquete 3D: WebGL por software no headless, para o canvas realmente renderizar
+      name: 'webgl',
+      testMatch: /house\.spec\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+        // sem voo de abertura/auto-rotação: o SwiftShader desenha ~1 quadro/s
+        reducedMotion: 'reduce',
+        launchOptions: { args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] },
+      },
+    },
+  ],
   webServer: {
     command: `npm run start -- -p ${port}`,
     url: `http://localhost:${port}`,
