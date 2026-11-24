@@ -6,8 +6,8 @@ test('página do projeto: 200, h1 com o nome e um h2 por cômodo', async ({ page
   await expect(page.locator('main')).toHaveCount(1)
   await expect(page.locator('h1')).toHaveCount(1)
   await expect(page.locator('h1')).toHaveText('Apartamento Pedra')
-  // 8 cômodos no conteúdo
-  await expect(page.locator('main h2')).toHaveCount(8)
+  // 7 cômodos no conteúdo (4 quartos)
+  await expect(page.locator('main h2')).toHaveCount(7)
   await expect(page.getByRole('link', { name: /contato|conversar/i }).first()).toHaveAttribute(
     'href',
     '/#contato',

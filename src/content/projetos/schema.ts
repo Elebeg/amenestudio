@@ -7,7 +7,6 @@ export const roomIds = [
   'suite-casal',
   'quarto-solteiro',
   'suite-ripada',
-  'quarto-escrivaninha',
   'quarto-espelho',
 ] as const
 
