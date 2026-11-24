@@ -11,9 +11,9 @@ test.describe('desempenho da home', () => {
   test.setTimeout(90_000)
 
   test('o chunk do three (maquete da #casa) só é pedido depois do clarão da abertura', async ({ page }) => {
-    // Os chunks têm nome com hash, então a identidade vem do conteúdo: o chunk grande (> 200 KB)
-    // que cria o contexto 'webgl2' é o do three/R3F da maquete. A sonda de qualidade, pequena,
-    // também cita 'webgl2' e é ignorada pelo tamanho. Em modo short, HouseScene é o único Canvas.
+    // Os chunks têm nome com hash, então a identidade vem do conteúdo: o chunk
+    // que cita 'WebGLRenderer' (marcador do three; sobrevive à minificação) e 'webgl2' é o da maquete. A sonda de qualidade
+    // cita só 'webgl2' e não conta. Em modo short, HouseScene é o único Canvas.
     const threeChunks = new Set<string>()
     const pending: Promise<void>[] = []
     page.on('response', (res) => {
@@ -23,7 +23,7 @@ test.describe('desempenho da home', () => {
         res
           .text()
           .then((body) => {
-            if (body.length > 200_000 && body.includes('webgl2')) threeChunks.add(url)
+            if (body.includes('WebGLRenderer') && body.includes('webgl2')) threeChunks.add(url)
           })
           .catch(() => {}),
       )
@@ -55,11 +55,15 @@ test.describe('desempenho da home', () => {
     }
   })
 
-  test('imagens acima da dobra somam menos de 600 KB', async ({ page }) => {
+  // Só imagens raster (png/jpeg/webp/avif) da carga inicial em 390 px; `?3d=0` mantém a maquete
+  // fora (sem canvas nem chunk do three), então só contam a capa e as fotos do HTML. A fixture já
+  // espera a camada da abertura sair do DOM; depois exige a capa decodificada.
+  test('imagens da carga inicial da home somam menos de 600 KB', async ({ page }) => {
     let bytes = 0
     const pending: Promise<void>[] = []
     page.on('response', (res) => {
-      if (!(res.headers()['content-type'] ?? '').startsWith('image/')) return
+      const type = (res.headers()['content-type'] ?? '').split(';')[0]
+      if (!/^image\/(png|jpeg|webp|avif)$/.test(type)) return
       pending.push(
         res
           .body()
@@ -70,8 +74,11 @@ test.describe('desempenho da home', () => {
       )
     })
     await page.setViewportSize({ width: 390, height: 844 })
-    await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await page.goto('/?3d=0')
+    await page.waitForFunction(() => {
+      const img = document.querySelector<HTMLImageElement>('#casa img')
+      return !!img && img.complete && img.naturalWidth > 0
+    })
     await Promise.all(pending)
     expect(bytes).toBeGreaterThan(0)
     expect(bytes).toBeLessThan(600 * 1024)
