@@ -12,7 +12,7 @@ import {
   clampPhi,
   clampRadius,
   easeInOutCubic,
-  lerpSpherical,
+  lerpSphericalInto,
   roomAtPoint,
   sphericalToPosition,
   type Spherical,
@@ -261,13 +261,7 @@ export function OrbitRig({ view, reducedMotion, shiftPx, aspect, active, reveale
     const tw = tween.current
     if (tw) {
       const t = (performance.now() - tw.t0) / 1000
-      const next = lerpSpherical(tw.from, tw.to, easeInOutCubic(t / tw.dur))
-      s.target[0] = next.target[0]
-      s.target[1] = next.target[1]
-      s.target[2] = next.target[2]
-      s.r = next.r
-      s.theta = next.theta
-      s.phi = next.phi
+      lerpSphericalInto(s, tw.from, tw.to, easeInOutCubic(t / tw.dur))
       if (t >= tw.dur) {
         tween.current = null
         kick.current()
@@ -310,7 +304,7 @@ export function OrbitRig({ view, reducedMotion, shiftPx, aspect, active, reveale
       else animating = true
     }
     const r0 = s.r
-    s.r = r0 * fit.current
+    s.r = clampRadius(r0 * fit.current)
     sphericalToPosition(s, pos.current)
     s.r = r0
     camera.position.set(pos.current[0], pos.current[1], pos.current[2])

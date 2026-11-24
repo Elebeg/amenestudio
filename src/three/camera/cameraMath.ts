@@ -1,5 +1,5 @@
 import type { RoomId } from '@/content/projetos'
-import { APARTMENT, type Rect, type RoomLayout } from '@/three/apartment/layout'
+import { APARTMENT, footprint, type Apartment, type Rect, type RoomLayout } from '@/three/apartment/layout'
 
 /**
  * Matemática pura da câmera orbital da maquete (sem three/DOM, testável no Node).
@@ -34,13 +34,19 @@ export function shortestTheta(from: number, to: number): number {
 
 /** Interpolação com extremos exatos (k = 0 → a, k = 1 → b com θ pelo caminho curto). */
 export function lerpSpherical(a: Spherical, b: Spherical, k: number): Spherical {
-  const mix = (x: number, y: number) => x * (1 - k) + y * k
-  return {
-    target: [mix(a.target[0], b.target[0]), mix(a.target[1], b.target[1]), mix(a.target[2], b.target[2])],
-    r: mix(a.r, b.r),
-    theta: mix(a.theta, shortestTheta(a.theta, b.theta)),
-    phi: mix(a.phi, b.phi),
-  }
+  return lerpSphericalInto({ target: [0, 0, 0], r: 0, theta: 0, phi: 0 }, a, b, k)
+}
+
+/** Mesma interpolação escrevendo em `out` (sem alocar: usada a cada quadro dos voos). */
+export function lerpSphericalInto(out: Spherical, a: Spherical, b: Spherical, k: number): Spherical {
+  const j = 1 - k
+  out.target[0] = a.target[0] * j + b.target[0] * k
+  out.target[1] = a.target[1] * j + b.target[1] * k
+  out.target[2] = a.target[2] * j + b.target[2] * k
+  out.r = a.r * j + b.r * k
+  out.theta = a.theta * j + shortestTheta(a.theta, b.theta) * k
+  out.phi = a.phi * j + b.phi * k
+  return out
 }
 
 export function easeInOutCubic(t: number): number {
@@ -73,58 +79,87 @@ export function roomAtPoint(x: number, z: number, rooms: readonly RoomLayout[] =
 
 // ── enquadramentos (derivados da planta, nunca de coordenadas fixas) ────────
 
-type Bounds = Rect
-
-/** Visão geral: de nordeste, centrada na planta, r 27 / φ 0,95. */
-export function overviewView(a: { rooms: readonly { rect: Rect }[]; areas?: readonly { rect: Rect }[] } = APARTMENT): Spherical {
-  const f = boundsOf(a)
-  return { target: [(f.x0 + f.x1) / 2, 0.4, (f.z0 + f.z1) / 2], r: 27, theta: Math.PI - 0.62, phi: 0.95 }
+/** O que os enquadramentos precisam da planta (a planta real ou uma sintética nos testes). */
+export type PlanLike = {
+  rooms: readonly RoomLayout[]
+  areas: readonly { rect: Rect }[]
+  varanda?: { rect: Rect }
 }
 
-function boundsOf(a: { rooms: readonly { rect: Rect }[]; areas?: readonly { rect: Rect }[] }): Bounds {
-  const all = [...a.rooms, ...(a.areas ?? [])].map((r) => r.rect)
+const planFootprint = (a: PlanLike): Rect => footprint(a as unknown as Apartment)
+
+/** Retângulo do "terreno" da maquete: a planta mais a varanda em balanço. */
+export function siteBounds(a: PlanLike = APARTMENT): Rect {
+  const f = planFootprint(a)
+  const v = a.varanda?.rect
+  if (!v) return f
+  return { x0: Math.min(f.x0, v.x0), z0: Math.min(f.z0, v.z0), x1: Math.max(f.x1, v.x1), z1: Math.max(f.z1, v.z1) }
+}
+
+/** r 27 enquadrava a planta estimada de 17 × 10,4 m (diagonal ≈ 19,9 m): mantém a proporção. */
+const OVERVIEW_R_PER_M = 27 / Math.hypot(17, 10.4)
+
+/** Visão geral: de nordeste, centrada no terreno (planta + varanda), raio proporcional à diagonal. */
+export function overviewView(a: PlanLike = APARTMENT): Spherical {
+  const b = siteBounds(a)
   return {
-    x0: Math.min(...all.map((r) => r.x0)),
-    z0: Math.min(...all.map((r) => r.z0)),
-    x1: Math.max(...all.map((r) => r.x1)),
-    z1: Math.max(...all.map((r) => r.z1)),
+    target: [(b.x0 + b.x1) / 2, 0.4, (b.z0 + b.z1) / 2],
+    r: clampRadius(OVERVIEW_R_PER_M * Math.hypot(b.x1 - b.x0, b.z1 - b.z0)),
+    theta: Math.PI - 0.62,
+    phi: 0.95,
   }
 }
 
 /** Abaixo desta maior dimensão (m) o cômodo é visto bem mais de cima (paredes de 2,7 m escondem o piso). */
 const SMALL_ROOM = 2.6
+/** Inclinação lateral (em unidades da tangente) quando o cômodo toca uma única fachada. */
+const SKEW = 0.46
+const EDGE_EPS = 1e-4
 
 /** Ajustes finos opcionais por cômodo (aplicados sobre o enquadramento derivado). */
 export const VIEW_OVERRIDES: Partial<Record<RoomId, Partial<Omit<Spherical, 'target'>>>> = {}
 
 /**
  * Enquadramento de um cômodo a partir do seu retângulo: alvo no centro, raio proporcional ao
- * tamanho, φ ≈ 0,68, visto pelo lado da fachada mais próxima (metade sul da planta vista do sul,
- * metade norte vista do norte), onde a parede externa some. Cômodos pequenos (ex.: lavabo)
- * ganham uma vista quase de cima.
+ * tamanho, φ ≈ 0,68. A câmera fica do lado das fachadas que o retângulo REALMENTE toca (borda
+ * igual à da planta), onde a parede externa some: num canto, na bissetriz; numa só fachada,
+ * levemente inclinada para fora da planta. Cômodos internos (sem fachada) ou pequenos ganham
+ * uma vista quase de cima.
  */
-export function viewFor(room: RoomLayout, bounds: Bounds = boundsOf(APARTMENT)): Spherical {
+export function viewFor(room: RoomLayout, f: Rect = planFootprint(APARTMENT)): Spherical {
   const { x0, x1, z0, z1 } = room.rect
   const cx = (x0 + x1) / 2
   const cz = (z0 + z1) / 2
   const dim = Math.max(x1 - x0, z1 - z0)
-  const south = cz > (bounds.z0 + bounds.z1) / 2
-  const small = dim < SMALL_ROOM
-  const base: Spherical = small
-    ? { target: [cx, 1.0, cz], r: clampRadius(6), theta: south ? 0.35 : Math.PI - 0.35, phi: 0.36 }
-    : { target: [cx, 0.5, cz], r: clampRadius(Math.max(8.5, dim * 1.9)), theta: south ? 0.43 : Math.PI - 0.43, phi: 0.68 }
+  const on = (a: number, b: number) => Math.abs(a - b) < EDGE_EPS
+  // soma das normais externas das fachadas tocadas (n = −z, s = +z, w = −x, e = +x)
+  let dx = (on(x1, f.x1) ? 1 : 0) - (on(x0, f.x0) ? 1 : 0)
+  let dz = (on(z1, f.z1) ? 1 : 0) - (on(z0, f.z0) ? 1 : 0)
+  const exterior = dx !== 0 || dz !== 0
+  if (exterior && (dx === 0 || dz === 0)) {
+    // uma fachada só: inclina para o lado de fora da planta, ao longo da fachada
+    if (dx === 0) dx = SKEW * (cx >= (f.x0 + f.x1) / 2 ? 1 : -1)
+    else dz = SKEW * (cz >= (f.z0 + f.z1) / 2 ? 1 : -1)
+  }
+  const base: Spherical =
+    !exterior || dim < SMALL_ROOM
+      ? {
+          target: [cx, 1.0, cz],
+          r: clampRadius(6),
+          theta: exterior ? Math.atan2(dx, dz) : Math.PI - 0.35,
+          phi: 0.36,
+        }
+      : { target: [cx, 0.5, cz], r: clampRadius(Math.max(8.5, dim * 1.9)), theta: Math.atan2(dx, dz), phi: 0.68 }
   const o = VIEW_OVERRIDES[room.id]
   if (!o) return base
   return { ...base, ...o, r: clampRadius(o.r ?? base.r), phi: clampPhi(o.phi ?? base.phi) }
 }
 
-export function buildViews(a: { rooms: readonly RoomLayout[]; areas?: readonly { rect: Rect }[] }): Record<ViewId, Spherical> {
-  const b = boundsOf(a)
+export function buildViews(a: PlanLike): Record<ViewId, Spherical> {
+  const f = planFootprint(a)
   const views = { overview: overviewView(a) } as Record<ViewId, Spherical>
-  for (const r of a.rooms) views[r.id] = viewFor(r, b)
+  for (const r of a.rooms) views[r.id] = viewFor(r, f)
   return views
 }
 
 export const VIEWS: Record<ViewId, Spherical> = buildViews(APARTMENT)
-
-export const VIEW_ORDER: ViewId[] = ['overview', ...APARTMENT.rooms.map((r) => r.id)]

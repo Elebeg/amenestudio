@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest'
 import {
   VIEWS,
   buildViews,
+  lerpSphericalInto,
+  siteBounds,
   overviewView,
   clampPhi,
   clampRadius,
@@ -63,7 +65,7 @@ describe('cameraMath', () => {
     expect(wallOpacity([1, 0], [0.3, 0.95])).toBe(1)
   })
 
-  // planta sintética: não depende das coordenadas da planta real (que ainda vai mudar)
+  // planta sintética: não depende das coordenadas da planta real
   const rect = (x0: number, z0: number, x1: number, z1: number) => ({ x0, z0, x1, z1 })
   const mk = (id: RoomLayout['id'], r: ReturnType<typeof rect>): RoomLayout => ({
     id,
@@ -71,20 +73,29 @@ describe('cameraMath', () => {
     openings: [],
     labelAt: [(r.x0 + r.x1) / 2, 3, (r.z0 + r.z1) / 2],
   })
+  // 12 × 8 m; living no canto noroeste, suíte encostada só na fachada sul, lavabo interno
   const plan = {
-    rooms: [mk('living', rect(0, -6, 6, -1)), mk('lavabo', rect(6, -3, 7.5, -1.2)), mk('suite-casal', rect(0, 1, 4, 5))],
-    areas: [{ rect: rect(-2, -6, 10, 5) }],
+    rooms: [mk('living', rect(0, 0, 6, 4)), mk('lavabo', rect(6.5, 1, 8, 2.6)), mk('suite-casal', rect(7, 4, 10, 8))],
+    areas: [{ rect: rect(0, 0, 12, 8) }],
+    varanda: { rect: rect(0, -2, 6, 0) },
   }
 
-  it('overviewView: centro da planta, r 27, φ 0,95', () => {
-    const o = overviewView(plan)
-    expect(o.r).toBe(27)
-    expect(o.phi).toBe(0.95)
-    expect(o.target[0]).toBeCloseTo(4)
-    expect(o.target[2]).toBeCloseTo(-0.5)
+  it('siteBounds: planta + varanda', () => {
+    expect(siteBounds(plan)).toEqual({ x0: 0, z0: -2, x1: 12, z1: 8 })
+    expect(siteBounds({ rooms: plan.rooms, areas: plan.areas })).toEqual({ x0: 0, z0: 0, x1: 12, z1: 8 })
   })
 
-  it('viewFor: alvo no centro do cômodo, φ ≈ 0,68, visto pela fachada mais próxima', () => {
+  it('overviewView: centrada no terreno, φ 0,95, raio cresce com o tamanho', () => {
+    const o = overviewView(plan)
+    expect(o.phi).toBe(0.95)
+    expect(o.target[0]).toBeCloseTo(6)
+    expect(o.target[2]).toBeCloseTo(3)
+    const small = overviewView({ rooms: plan.rooms, areas: [{ rect: rect(0, 0, 6, 4) }] })
+    expect(o.r).toBeGreaterThan(small.r)
+    expect(o.r).toBe(clampRadius(o.r))
+  })
+
+  it('viewFor: θ pela fachada que o cômodo realmente toca', () => {
     const views = buildViews(plan)
     for (const room of plan.rooms) {
       const v = views[room.id]
@@ -93,24 +104,32 @@ describe('cameraMath', () => {
       expect(v.phi).toBe(clampPhi(v.phi))
       expect(v.r).toBe(clampRadius(v.r))
     }
+    // canto noroeste: câmera a noroeste (−x, −z), na bissetriz das duas fachadas
     expect(views.living.phi).toBeCloseTo(0.68)
-    // metade norte vista do norte (cos θ < 0), metade sul vista do sul (cos θ > 0)
-    expect(Math.cos(views.living.theta)).toBeLessThan(0)
-    expect(Math.cos(views['suite-casal'].theta)).toBeGreaterThan(0)
-    // cômodo pequeno (1,5 × 1,8 m): vista bem mais de cima
+    expect(Math.sin(views.living.theta)).toBeCloseTo(-Math.SQRT1_2)
+    expect(Math.cos(views.living.theta)).toBeCloseTo(-Math.SQRT1_2)
+    // só a fachada sul: câmera ao sul, inclinada para o lado de fora (leste do centro)
+    expect(Math.cos(views['suite-casal'].theta)).toBeGreaterThan(0.8)
+    expect(Math.sin(views['suite-casal'].theta)).toBeGreaterThan(0.2)
+    // cômodo interno (sem fachada): vista quase de cima
     expect(views.lavabo.phi).toBeLessThan(0.5)
-    // cômodo maior → câmera mais longe
-    expect(views.living.r).toBeGreaterThan(views['suite-casal'].r - 1e-9)
   })
 
   it('VIEWS cobre todos os cômodos da planta atual', () => {
     for (const room of APARTMENT.rooms) expect(VIEWS[room.id], room.id).toBeDefined()
-    expect(VIEWS.overview.r).toBe(27)
+    expect(VIEWS.overview.phi).toBe(0.95)
   })
 
-  it('roomAtPoint: encontra o cômodo sob um ponto do piso', () => {
-    expect(roomAtPoint(3, -3, plan.rooms)).toBe('living')
-    expect(roomAtPoint(2, 3, plan.rooms)).toBe('suite-casal')
-    expect(roomAtPoint(100, 100, plan.rooms)).toBeNull()
+  it('lerpSphericalInto escreve no destino, igual a lerpSpherical', () => {
+    const out: Spherical = { target: [0, 0, 0], r: 0, theta: 0, phi: 0 }
+    expect(lerpSphericalInto(out, a, b, 0.3)).toBe(out)
+    expect(out).toEqual(lerpSpherical(a, b, 0.3))
+  })
+
+  it('roomAtPoint: cômodo sob um ponto do piso; varanda e áreas não são cômodos', () => {
+    expect(roomAtPoint(3, 2, plan.rooms)).toBe('living')
+    expect(roomAtPoint(8, 6, plan.rooms)).toBe('suite-casal')
+    expect(roomAtPoint(3, -1, plan.rooms)).toBeNull()
+    expect(roomAtPoint(11, 1, plan.rooms)).toBeNull()
   })
 })
