@@ -103,7 +103,7 @@ export function Lighting({ lighting, reducedMotion, quality }: Props) {
     if (ao.current) ao.current.configuration.intensity = THREE.MathUtils.lerp(MANHA.ao, NOITE.ao, e)
   })
 
-  const shadowSize = quality === 'high' ? 4096 : 2048
+  const shadowSize = quality === 'high' ? 4096 : 1024
   return (
     <>
       <hemisphereLight ref={hemi} args={[0xfff3e2, 0x8a7560, MANHA.hemi]} />
@@ -137,10 +137,13 @@ export function Lighting({ lighting, reducedMotion, quality }: Props) {
             color={0xffc48a}
           />
         ))}
-      <EffectComposer multisampling={quality === 'high' ? 4 : 0}>
-        <N8AO ref={ao as never} aoRadius={0.6} intensity={MANHA.ao} distanceFalloff={0.6} quality={quality === 'high' ? 'medium' : 'performance'} halfRes={quality === 'low'} />
-        <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
-      </EffectComposer>
+      {/* low: sem pós-processamento (o renderer aplica o tone mapping ACES do Canvas) */}
+      {quality === 'high' && (
+        <EffectComposer multisampling={4}>
+          <N8AO ref={ao as never} aoRadius={0.6} intensity={MANHA.ao} distanceFalloff={0.6} quality="medium" />
+          <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
+        </EffectComposer>
+      )}
     </>
   )
 }

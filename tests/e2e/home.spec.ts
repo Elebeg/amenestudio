@@ -16,7 +16,8 @@ test.describe('home: seções institucionais', () => {
 
   test('todas as imagens têm alt não vazio', async ({ page }) => {
     await page.goto('/')
-    const alts = await page.locator('img').evaluateAll((els) => els.map((e) => e.getAttribute('alt') ?? ''))
+    // capas da grade do fallback são decorativas (alt vazio): o botão já nomeia o cômodo
+    const alts = await page.locator('img:not([data-house-fallback] img)').evaluateAll((els) => els.map((e) => e.getAttribute('alt') ?? ''))
     expect(alts.length).toBeGreaterThan(0)
     for (const alt of alts) expect(alt.trim()).not.toBe('')
   })
