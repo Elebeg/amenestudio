@@ -12,6 +12,7 @@ import { RoomPanel, type PanelRoom } from './RoomPanel'
 import { SceneBoundary } from './SceneBoundary'
 import { HouseFallback } from './HouseFallback'
 import { detectTierInBrowser, type Tier } from '@/lib/quality'
+import { useIntroReleased } from '@/components/intro/introStore'
 import { APARTMENT } from '@/three/apartment/layout'
 import s from './house.module.css'
 
@@ -62,6 +63,8 @@ function useMedia(query: string, fallback = false): boolean {
 export function HouseSection({ projeto, rooms, cover, coverAlt, stageClassName, infoClassName, eyebrow, h2ClassName, linkClassName }: Props) {
   const [state, setState] = useState<HouseState>({ view: 'overview', lighting: 'manha', panelOpen: false })
   const [mount, setMount] = useState(false)
+  // a maquete só começa a carregar no clarão da abertura (ou quando não há abertura)
+  const introReleased = useIntroReleased()
   // null só no servidor/hidratação; no cliente a sonda barata roda logo após a montagem
   const tier = useSyncExternalStore<Tier | null>(() => () => {}, detectTierInBrowser, () => null)
   // o canvas caiu (chunk, contexto WebGL ou exceção do R3F): volta para a capa estática
@@ -97,14 +100,14 @@ export function HouseSection({ projeto, rooms, cover, coverAlt, stageClassName, 
     return i < 0 ? null : { ...rooms[i], num: pad(i + 1) }
   }, [rooms, state.panelOpen, state.view])
 
-  // carrega o canvas quando o navegador estiver ocioso (a capa é o LCP)
+  // carrega o canvas quando o navegador estiver ocioso (a capa é o LCP), depois da abertura
   useEffect(() => {
-    if (!tier || tier === 'none') return
+    if (!tier || tier === 'none' || !introReleased) return
     const ric = window.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 200))
     const cic = window.cancelIdleCallback ?? window.clearTimeout
     const id = ric(() => setMount(true), { timeout: 1500 })
     return () => cic(id)
-  }, [tier])
+  }, [tier, introReleased])
 
   // fora da tela: sem auto-rotação; largura do palco para o deslocamento do painel
   useEffect(() => {

@@ -7,6 +7,8 @@ import { SmoothScroll } from "@/components/providers/SmoothScroll";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { WhatsAppFab } from "@/components/layout/WhatsAppFab";
+import { Intro } from "@/components/intro/Intro";
+import { getPhoto, getProjects } from "@/content/projetos";
 import "./globals.css";
 
 const display = Cormorant({
@@ -34,6 +36,9 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
+  // quadro estático da abertura (sem WebGL / reduced motion): a capa do projeto em destaque
+  const capa = getPhoto(getProjects()[0].capa);
+  const still = { src: capa.src, width: capa.width, height: capa.height };
   return (
     <html lang="pt-BR" className={`${display.variable} ${text.variable}`}>
       <body>
@@ -42,6 +47,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           dangerouslySetInnerHTML={{ __html: jsonLdString(orgJsonLd(site)) }}
         />
         <SmoothScroll>
+          {/* abertura: o botão "Pular abertura" é o primeiro focável do <body> (só na home) */}
+          <Intro still={still} />
           <Header />
           {children}
           <Footer />
