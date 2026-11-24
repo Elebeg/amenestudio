@@ -16,14 +16,16 @@ import { VIEWS, sphericalToPosition, type HouseState } from './cameraMath'
 export type HouseSceneProps = {
   state: HouseState
   labels: RoomLabel[]
-  labelClassName: string
+  labelLayer: RefObject<HTMLDivElement | null>
+  /** O contexto WebGL foi perdido: a HouseSection desmonta o canvas e fica na capa. */
+  onContextLost: () => void
   reducedMotion: boolean
   shiftPx: number
   aspect: number
   active: boolean
   revealed: boolean
   quality: 'high' | 'low'
-  onSelect: (id: RoomId, opener?: HTMLElement) => void
+  onSelect: (id: RoomId) => void
   onReady: () => void
   apiRef: RefObject<RigApi | null>
 }
@@ -106,7 +108,17 @@ export default function HouseScene(p: HouseSceneProps) {
       dpr={p.quality === 'high' ? [1, 2] : [1, 1.5]}
       camera={{ position: initialPosition, fov: 35, near: 0.1, far: 200 }}
       gl={{ antialias: false, powerPreference: 'high-performance', preserveDrawingBuffer: stats }}
-      onCreated={setupEnvironment}
+      onCreated={(st) => {
+        setupEnvironment(st)
+        st.gl.domElement.addEventListener(
+          'webglcontextlost',
+          (e) => {
+            e.preventDefault()
+            p.onContextLost()
+          },
+          { once: true },
+        )
+      }}
       style={{ touchAction: 'pan-y' }}
     >
       <Lighting lighting={p.state.lighting} reducedMotion={p.reducedMotion} quality={p.quality} />
@@ -122,12 +134,7 @@ export default function HouseScene(p: HouseSceneProps) {
         apiRef={p.apiRef}
       />
       <WallFader />
-      <RoomLabels
-        labels={p.labels}
-        visible={p.state.view === 'overview'}
-        className={p.labelClassName}
-        onSelect={(id, el) => p.onSelect(id, el)}
-      />
+      <RoomLabels labels={p.labels} layer={p.labelLayer} />
       <ReadySignal onReady={p.onReady} />
       {stats && <Stats />}
     </Canvas>

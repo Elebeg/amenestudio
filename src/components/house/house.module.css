@@ -36,11 +36,30 @@
   position: absolute;
   inset: 0;
   opacity: 0;
-  transition: opacity 0.9s ease;
+  /* antes de pronto: invisível e fora do alcance do ponteiro (a capa continua clicável/visível) */
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 0.9s ease,
+    visibility 0s linear 0.9s;
   touch-action: pan-y;
 }
 .stage[data-ready='true'] .canvasLayer {
   opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition:
+    opacity 0.9s ease,
+    visibility 0s;
+}
+
+/* camada dos rótulos: cobre o canvas sem capturar o ponteiro; só os botões recebem clique */
+.labelLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  overflow: hidden;
 }
 .canvasLayer canvas {
   touch-action: pan-y;
@@ -50,9 +69,13 @@
 /* ---------- rótulos dos cômodos (drei Html) ---------- */
 
 .label {
+  position: absolute;
+  left: 0;
+  top: 0;
   display: inline-flex;
   align-items: baseline;
   gap: 0.5em;
+  /* a posição projetada vem de RoomLabels (style.transform) */
   transform: translate(-50%, calc(-100% - 10px));
   padding: 0.4rem 0.6rem 0.38rem;
   border: 1px solid var(--line);
@@ -66,7 +89,6 @@
   white-space: nowrap;
   cursor: pointer;
   pointer-events: auto;
-  position: relative;
   transition:
     opacity 0.4s ease,
     border-color 0.2s ease,

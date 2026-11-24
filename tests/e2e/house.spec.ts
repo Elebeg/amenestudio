@@ -1,4 +1,7 @@
 import { test, expect } from '@playwright/test'
+import { getProject } from '../../src/content/projetos'
+
+const ROOMS = getProject('apartamento-pedra')!.rooms
 
 // Roda no projeto "webgl" (playwright.config): chromium com SwiftShader para o canvas renderizar.
 // SwiftShader conta como aparelho fraco (fica a capa estática); `?maquete=1` força o canvas.
@@ -25,6 +28,23 @@ test.describe('home: maquete 3D', () => {
     await expect(living).toBeFocused()
   })
 
+  test('a lista tem Visão geral + um botão por cômodo do projeto', async ({ page }) => {
+    await page.goto('/?maquete=1')
+    const nav = page.getByRole('navigation', { name: 'Ambientes da maquete' })
+    await expect(nav.getByRole('button')).toHaveCount(ROOMS.length + 1)
+  })
+
+  test('o rótulo do canvas abre o cômodo e o foco volta a ele ao fechar', async ({ page }) => {
+    await page.goto('/?maquete=1')
+    await expect(page.locator('[data-casa-stage]')).toHaveAttribute('data-ready', 'true', { timeout: 60_000 })
+    const label = page.locator('button[data-room-label="living"]')
+    await label.click()
+    await expect(page.locator('[data-room-panel="living"]')).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(page.locator('[data-room-panel]')).toHaveCount(0)
+    await expect(label).toBeFocused()
+  })
+
   test('setas na lista trocam de cômodo', async ({ page }) => {
     await page.goto('/?maquete=1')
     const nav = page.getByRole('navigation', { name: 'Ambientes da maquete' })
@@ -41,8 +61,9 @@ test.describe('home: maquete 3D', () => {
     const stage = page.locator('[data-casa-stage]')
     await expect(stage.locator('img').first()).toBeVisible()
     await expect(stage).toHaveAttribute('data-ready', 'true', { timeout: 60_000 })
-    const labels = page.locator('button[data-room-label]')
-    expect(await labels.count()).toBeGreaterThanOrEqual(5)
+    // um rótulo por cômodo do projeto (7 na planta atual)
+    await expect(page.locator('button[data-room-label]')).toHaveCount(ROOMS.length)
+    await expect(page.locator('button[data-room-label="living"]')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Dia' })).toHaveAttribute('aria-pressed', 'true')
     await page.getByRole('button', { name: 'Noite' }).click()
     await expect(page.getByRole('button', { name: 'Noite' })).toHaveAttribute('aria-pressed', 'true')
@@ -54,8 +75,10 @@ test.describe('home: maquete 3D', () => {
     await page.waitForTimeout(2500)
     await expect(page.locator('[data-house-canvas]')).toHaveCount(0)
     await expect(page.locator('[data-casa-stage] img').first()).toBeVisible()
-    await page.getByRole('navigation', { name: 'Ambientes da maquete' }).getByRole('button', { name: 'Lavabo' }).click()
-    await expect(page.locator('[data-room-panel="lavabo"] img')).toHaveCount(1)
+    // o painel mostra min(4, fotos do cômodo): esperado derivado do conteúdo, não fixo
+    const lavabo = getProject('apartamento-pedra')!.rooms.find((r) => r.id === 'lavabo')!
+    await page.getByRole('navigation', { name: 'Ambientes da maquete' }).getByRole('button', { name: lavabo.nome }).click()
+    await expect(page.locator('[data-room-panel="lavabo"] img')).toHaveCount(Math.min(4, lavabo.fotos.length))
   })
 
   test('a roda do mouse sobre o canvas rola a página', async ({ page }) => {

@@ -5,7 +5,8 @@ import * as THREE from 'three'
 import { useFrame, useThree } from '@react-three/fiber'
 import { EffectComposer, N8AO, ToneMapping } from '@react-three/postprocessing'
 import { ToneMappingMode } from 'postprocessing'
-import { APARTMENT, footprint } from '@/three/apartment/layout'
+import { APARTMENT } from '@/three/apartment/layout'
+import { siteBounds } from './cameraMath'
 import type { Lighting as LightingMode } from '@/three/apartment/materials'
 
 /** Os dois climas de luz. `mix` 0 = manhã, 1 = noite; tudo é interpolado entre eles. */
@@ -49,12 +50,14 @@ export function Lighting({ lighting, reducedMotion, quality }: Props) {
   const points = useRef<(THREE.PointLight | null)[]>([])
   const goal = lighting === 'noite' ? 1 : 0
   const mix = useRef(goal)
-  // luzes pontuais montadas durante a noite e durante o fade de volta para a manhã
-  const [fadingOut, setFadingOut] = useState(false)
-  const pointsOn = goal > 0 || fadingOut
-  const [aoIntensity, setAo] = useState(goal ? NOITE.ao : MANHA.ao)
+  // Luzes pontuais: montam quando a noite é pedida e só desmontam quando o fade de volta à
+  // manhã termina (mix === 0). Sem piscar nem recompilar shaders no meio da transição.
+  const [pointsOn, setPointsOn] = useState(goal > 0)
+  if (goal > 0 && !pointsOn) setPointsOn(true) // ajuste de estado durante o render (padrão do React)
+  const ao = useRef<{ configuration: { intensity: number } } | null>(null)
   const bg = useRef(new THREE.Color())
-  const f = useMemo(() => footprint(APARTMENT), [])
+  // terreno inteiro (planta + varanda) dentro da câmera de sombra
+  const f = useMemo(() => siteBounds(APARTMENT), [])
   const center = useMemo(() => new THREE.Vector3((f.x0 + f.x1) / 2, 0, (f.z0 + f.z1) / 2), [f])
   const half = Math.max(f.x1 - f.x0, f.z1 - f.z0) / 2 + 1.5
 
@@ -81,10 +84,9 @@ export function Lighting({ lighting, reducedMotion, quality }: Props) {
       // passo pelo tempo real (limitado a 0,25 s) para o fade não se arrastar em aparelho lento
       const step = Math.min(delta, 0.25) / FADE_SECONDS
       mix.current = goal > m0 ? Math.min(goal, m0 + step) : Math.max(goal, m0 - step)
-      if (goal === 0 && !fadingOut) setFadingOut(true)
       invalidate()
-    } else if (fadingOut) {
-      setFadingOut(false)
+    } else if (m0 === 0 && pointsOn) {
+      setPointsOn(false)
     }
     const m = mix.current
     // curva suave: a noite "acende" depois que o dia já baixou
@@ -98,8 +100,7 @@ export function Lighting({ lighting, reducedMotion, quality }: Props) {
     }
     const pi = NOITE.point * Math.max(0, (m - 0.25) / 0.75)
     for (const p of points.current) if (p) p.intensity = pi
-    const ao = THREE.MathUtils.lerp(MANHA.ao, NOITE.ao, e)
-    if (Math.abs(ao - aoIntensity) > 0.05 || (m === goal && ao !== aoIntensity)) setAo(ao)
+    if (ao.current) ao.current.configuration.intensity = THREE.MathUtils.lerp(MANHA.ao, NOITE.ao, e)
   })
 
   const shadowSize = quality === 'high' ? 4096 : 2048
@@ -137,7 +138,7 @@ export function Lighting({ lighting, reducedMotion, quality }: Props) {
           />
         ))}
       <EffectComposer multisampling={quality === 'high' ? 4 : 0}>
-        <N8AO aoRadius={0.6} intensity={aoIntensity} distanceFalloff={0.6} quality={quality === 'high' ? 'medium' : 'performance'} halfRes={quality === 'low'} />
+        <N8AO ref={ao as never} aoRadius={0.6} intensity={MANHA.ao} distanceFalloff={0.6} quality={quality === 'high' ? 'medium' : 'performance'} halfRes={quality === 'low'} />
         <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
       </EffectComposer>
     </>

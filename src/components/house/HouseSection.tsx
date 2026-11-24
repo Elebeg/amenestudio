@@ -9,6 +9,8 @@ import type { RigApi } from '@/three/camera/OrbitRig'
 import type { HouseState, ViewId } from '@/three/camera/cameraMath'
 import { RoomNav, StageControls, type NavRoom } from './RoomNav'
 import { RoomPanel, type PanelRoom } from './RoomPanel'
+import { SceneBoundary } from './SceneBoundary'
+import { APARTMENT } from '@/three/apartment/layout'
 import s from './house.module.css'
 
 // O canvas (three, R3F, pós-processamento) só existe no cliente e chega depois da capa.
@@ -57,10 +59,14 @@ function useMedia(query: string, fallback = false): boolean {
  */
 function canRunMaquete(): boolean {
   try {
-    if (new URLSearchParams(window.location.search).get('maquete') === '1') return true
     const c = document.createElement('canvas')
     const gl = (c.getContext('webgl2') ?? c.getContext('webgl')) as WebGLRenderingContext | null
     if (!gl) return false
+    // ?maquete=1 pula só a checagem de renderizador por software, nunca a de WebGL
+    if (new URLSearchParams(window.location.search).get('maquete') === '1') {
+      gl.getExtension('WEBGL_lose_context')?.loseContext()
+      return true
+    }
     const info = gl.getExtension('WEBGL_debug_renderer_info')
     const renderer = String(info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER))
     gl.getExtension('WEBGL_lose_context')?.loseContext()
@@ -78,6 +84,8 @@ function canRunMaquete(): boolean {
 export function HouseSection({ projeto, rooms, cover, coverAlt, stageClassName, infoClassName, eyebrow, h2ClassName, linkClassName }: Props) {
   const [state, setState] = useState<HouseState>({ view: 'overview', lighting: 'manha', panelOpen: false })
   const [mount, setMount] = useState(false)
+  // o canvas caiu (chunk, contexto WebGL ou exceção do R3F): volta para a capa estática
+  const [failed, setFailed] = useState(false)
   const [ready, setReady] = useState(false)
   const [active, setActive] = useState(true)
   const [box, setBox] = useState({ w: 0, h: 0 })
@@ -89,10 +97,20 @@ export function HouseSection({ projeto, rooms, cover, coverAlt, stageClassName, 
   const rig = useRef<RigApi | null>(null)
   const opener = useRef<HTMLElement | null>(null)
   const pendingFocus = useRef<{ room: RoomId } | null>(null)
+  const nav = useRef<HTMLDivElement>(null)
+  const labelLayer = useRef<HTMLDivElement>(null)
 
   const projectHref = `/projetos/${projeto.slug}`
   const navRooms: NavRoom[] = useMemo(() => rooms.map((r, i) => ({ id: r.id, nome: r.nome, num: pad(i + 1) })), [rooms])
-  const labels = useMemo(() => rooms.map((r, i) => ({ id: r.id, num: pad(i + 1), label: shortLabel(r.nome) })), [rooms])
+  // uma única fonte de cômodos: os do conteúdo que também existem na planta
+  const labels = useMemo(
+    () =>
+      rooms.flatMap((r, i) => {
+        const at = APARTMENT.rooms.find((a) => a.id === r.id)?.labelAt
+        return at ? [{ id: r.id, num: pad(i + 1), label: shortLabel(r.nome), at }] : []
+      }),
+    [rooms],
+  )
   const panelRoom: PanelRoom | null = useMemo(() => {
     if (!state.panelOpen || state.view === 'overview') return null
     const i = rooms.findIndex((r) => r.id === state.view)
@@ -124,6 +142,8 @@ export function HouseSection({ projeto, rooms, cover, coverAlt, stageClassName, 
   }, [])
 
   const select = useCallback((view: ViewId, el?: HTMLElement, viaArrows = false) => {
+    // clique na varanda, num banheiro ou na circulação: nada (só cômodos com conteúdo)
+    if (view !== 'overview' && !rooms.some((r) => r.id === view)) return
     if (view === 'overview') {
       setState((st) => ({ ...st, view, panelOpen: false }))
       return
@@ -131,7 +151,7 @@ export function HouseSection({ projeto, rooms, cover, coverAlt, stageClassName, 
     opener.current = el ?? null
     setFocusOnOpen(!viaArrows && !!el)
     setState((st) => ({ ...st, view, panelOpen: true }))
-  }, [])
+  }, [rooms])
 
   const close = useCallback(() => {
     setState((st) => {
@@ -153,6 +173,17 @@ export function HouseSection({ projeto, rooms, cover, coverAlt, stageClassName, 
   }, [state.panelOpen])
 
   const onReady = useCallback(() => setReady(true), [])
+  const onFail = useCallback(() => {
+    setFailed(true)
+    setReady(false)
+  }, [])
+  // Esc só vale quando o foco está na maquete, no painel ou na lista (ou em lugar nenhum)
+  const escapeInScope = useCallback(() => {
+    const a = document.activeElement
+    return !a || a === document.body || !!stage.current?.contains(a) || !!nav.current?.contains(a)
+  }, [])
+  const live = mount && !failed
+  const labelsOn = live && ready && state.view === 'overview'
   // mesma regra do CSS: clamp(300px, 36%, 400px)
   const panelW = desktop && panelRoom ? Math.min(400, Math.max(300, box.w * 0.36)) : 0
   const shiftPx = panelW / 2
@@ -174,25 +205,49 @@ export function HouseSection({ projeto, rooms, cover, coverAlt, stageClassName, 
             sizes="(min-width: 900px) 60vw, 100vw"
             preload
           />
-          {mount && (
+          {live && (
             <div className={s.canvasLayer} data-house-canvas>
-              <HouseScene
+              <SceneBoundary onError={onFail}>
+                <HouseScene
                 state={state}
                 labels={labels}
-                labelClassName={s.label}
+                labelLayer={labelLayer}
+                onContextLost={onFail}
                 reducedMotion={reducedMotion}
                 shiftPx={shiftPx}
                 aspect={aspect}
                 active={active}
                 revealed={ready}
                 quality={quality}
-                onSelect={(id, el) => select(id, el)}
+                onSelect={(id) => select(id)}
                 onReady={onReady}
                 apiRef={rig}
-              />
+                />
+              </SceneBoundary>
             </div>
           )}
-          {mount && (
+          {live && (
+            // rótulos: botões DOM comuns; o canvas só escreve a posição projetada (RoomLabels).
+            // Só existem depois de pronto: antes disso nada focável sobre a capa.
+            <div className={s.labelLayer} ref={labelLayer}>
+              {ready && labels.map((l) => (
+                <button
+                  key={l.id}
+                  type="button"
+                  className={s.label}
+                  data-room-label={l.id}
+                  data-visible={labelsOn}
+                  tabIndex={labelsOn ? 0 : -1}
+                  aria-hidden={labelsOn ? undefined : true}
+                  onClick={(e) => select(l.id, e.currentTarget)}
+                >
+                  <span aria-hidden="true">{l.num}</span>
+                  {l.label}
+                </button>
+              ))}
+            </div>
+          )}
+          {live && (
             <>
               <StageControls
                 lighting={state.lighting}
@@ -208,7 +263,14 @@ export function HouseSection({ projeto, rooms, cover, coverAlt, stageClassName, 
           )}
         </div>
         {panelRoom && (
-          <RoomPanel room={panelRoom} total={rooms.length} projectHref={`${projectHref}#room-${panelRoom.id}`} focusOnOpen={focusOnOpen} onClose={close} />
+          <RoomPanel
+            room={panelRoom}
+            total={rooms.length}
+            projectHref={`${projectHref}#room-${panelRoom.id}`}
+            focusOnOpen={focusOnOpen}
+            onClose={close}
+            escapeInScope={escapeInScope}
+          />
         )}
       </div>
 
@@ -217,7 +279,9 @@ export function HouseSection({ projeto, rooms, cover, coverAlt, stageClassName, 
         <h2 id="casa-titulo" className={h2ClassName}>
           {projeto.nome}
         </h2>
-        <RoomNav rooms={navRooms} view={state.view} onSelect={select} />
+        <div ref={nav}>
+          <RoomNav rooms={navRooms} view={state.view} onSelect={select} />
+        </div>
         <Link href={projectHref} className={linkClassName}>
           Ver projeto completo
         </Link>

@@ -15,13 +15,15 @@ type Props = {
   /** Mover o foco para o painel ao abrir (clique/Enter; não ao percorrer com as setas). */
   focusOnOpen: boolean
   onClose: () => void
+  /** Esc só fecha quando o foco está na maquete, no painel ou na lista. */
+  escapeInScope: () => boolean
 }
 
 /**
  * Painel do cômodo: nome, descrição, até 4 fotos reais (mínimo 1) e o link do projeto.
  * Fecha com Esc ou "Fechar"; quem o abriu devolve o foco (HouseSection).
  */
-export function RoomPanel({ room, total, projectHref, focusOnOpen, onClose }: Props) {
+export function RoomPanel({ room, total, projectHref, focusOnOpen, onClose, escapeInScope }: Props) {
   const heading = useRef<HTMLHeadingElement>(null)
   const fotos = room.fotos.slice(0, 4)
   const rest = Math.max(1, fotos.length - 1)
@@ -32,11 +34,11 @@ export function RoomPanel({ room, total, projectHref, focusOnOpen, onClose }: Pr
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape' && escapeInScope()) onClose()
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, [onClose, escapeInScope])
 
   return (
     <aside data-lenis-prevent className={s.panel} aria-labelledby={`painel-${room.id}`} data-room-panel={room.id} key={room.id}>
