@@ -7,6 +7,7 @@ import { SmoothScroll } from "@/components/providers/SmoothScroll";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { WhatsAppFab } from "@/components/layout/WhatsAppFab";
+import { Analytics } from "@vercel/analytics/next";
 import { Intro } from "@/components/intro/Intro";
 import { getPhoto, getProjects } from "@/content/projetos";
 import "./globals.css";
@@ -55,6 +56,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         </SmoothScroll>
         <WhatsAppFab visible />
         <DaylightController />
+        <Analytics />
       </body>
     </html>
   );

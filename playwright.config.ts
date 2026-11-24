@@ -7,11 +7,11 @@ export default defineConfig({
   fullyParallel: true,
   use: { baseURL: `http://localhost:${port}` },
   projects: [
-    { name: 'chromium', testIgnore: /(house|fallback)\.spec\.ts/, use: { ...devices['Desktop Chrome'] } },
+    { name: 'chromium', testIgnore: /(house|fallback|perf)\.spec\.ts/, use: { ...devices['Desktop Chrome'] } },
     {
       // maquete 3D: WebGL por software no headless, para o canvas realmente renderizar
       name: 'webgl',
-      testMatch: /house\.spec\.ts/,
+      testMatch: /(house|perf)\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
         // sem voo de abertura/auto-rotação: o SwiftShader desenha ~1 quadro/s

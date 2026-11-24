@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import { site } from '@/config/site'
+import { track } from '@/lib/analytics'
 import { useIntroPhase } from '@/components/intro/introStore'
 import styles from './WhatsAppFab.module.css'
 
@@ -25,6 +26,7 @@ export function WhatsAppFab({ visible }: { visible: boolean }) {
       aria-label="Conversar pelo WhatsApp"
       aria-hidden={show ? undefined : true}
       tabIndex={show ? 0 : -1}
+      onClick={() => track('click_whatsapp_fab')}
     >
       WhatsApp
     </a>
