@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures'
 
 const IDS = ['casa', 'manifesto', 'projetos', 'processo', 'estudio', 'contato']
 

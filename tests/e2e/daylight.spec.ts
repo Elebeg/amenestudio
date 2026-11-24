@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures'
 
 const baseURL = `http://localhost:${process.env.E2E_PORT ?? '3000'}`
 

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures'
 
 test('robots.txt e sitemap.xml respondem 200', async ({ request }) => {
   const r = await request.get('/robots.txt')
