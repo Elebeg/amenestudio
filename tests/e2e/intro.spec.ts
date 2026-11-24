@@ -48,14 +48,13 @@ test.describe('abertura', () => {
     await expect(page.locator(layer)).toHaveCount(0, { timeout: 3000 })
   })
 
-  test('rolar a roda durante a abertura encerra (done)', async ({ page }) => {
+  test('um único evento de roda encerra a abertura e já rola a página', async ({ page }) => {
     await page.goto('/')
     await expect(page.locator(layer)).toHaveAttribute('data-mode', 'full')
     await page.mouse.move(600, 400)
-    await page.mouse.wheel(0, 400)
+    expect(await page.evaluate(() => window.scrollY)).toBe(0)
+    await page.mouse.wheel(0, 500)
     await expect(page.locator(layer)).toHaveCount(0, { timeout: 1000 })
-    // a rolagem volta a funcionar
-    await page.mouse.wheel(0, 600)
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0)
   })
 
@@ -94,5 +93,20 @@ test.describe('abertura', () => {
     await page.goto('/projetos/apartamento-pedra')
     await expect(page.locator('[data-intro-root]')).toHaveCount(0)
     await expect(page.getByRole('button', { name: 'Pular abertura' })).toHaveCount(0)
+  })
+})
+
+test.describe('abertura sem JavaScript', () => {
+  test.use({ javaScriptEnabled: false })
+
+  test('a home rola e o conteúdo fica visível (a camada nunca prende a página)', async ({ page }) => {
+    await page.goto('/')
+    await expect(page.locator(layer)).toBeHidden()
+    await expect(page.getByRole('button', { name: 'Pular abertura' })).toBeHidden()
+    await expect(page.locator('h1')).toBeVisible()
+    expect(await page.evaluate(() => getComputedStyle(document.documentElement).overflowY)).not.toBe('hidden')
+    await page.mouse.move(600, 400)
+    await page.mouse.wheel(0, 800)
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0)
   })
 })

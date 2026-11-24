@@ -35,6 +35,8 @@ export type DawnState = {
   exposure: number
   env: number
   dust: number
+  /** rampa principal da luz (0 noite → 1 manhã), a mesma que move sol, hemisfério e exposição */
+  ramp: number
   /** 0 → 1 do movimento lento de câmera (dolly) */
   dolly: number
 }
@@ -57,6 +59,7 @@ export function dawnAt(p: number): DawnState {
     exposure: lerp(0.5, 1.0, s),
     env: lerp(0.03, 0.45, s),
     dust: 0.55 * sstep(0.25, 0.6, p) * (1 - 0.6 * sstep(0.85, 1, p)),
+    ramp: s,
     dolly: easeInOutCubic(clamp01(p)),
   }
 }

@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation'
 import { useCallback, useEffect, useReducer, useRef, useState, useSyncExternalStore } from 'react'
 import { gsap } from 'gsap'
+import { startIntroClock, type IntroClock } from '@/lib/introClock'
 import { site } from '@/config/site'
 import { useLenis } from '@/components/providers/SmoothScroll'
 import { detectTierInBrowser } from '@/lib/quality'
@@ -39,8 +40,13 @@ function firstFocusableAfterIntro(): HTMLElement | null {
   return all.find((el) => !el.closest('[data-intro-root]') && el.offsetParent !== null) ?? null
 }
 
-/** `?abertura=6` congela a abertura completa em 6 s (revisão visual e capturas de tela). */
+/**
+ * `?abertura=6` congela a abertura completa em 6 s (revisão visual e capturas de tela).
+ * Só fora de produção, ou com NEXT_PUBLIC_INTRO_DEBUG definido no build.
+ */
+const INTRO_DEBUG = process.env.NODE_ENV !== 'production' || !!process.env.NEXT_PUBLIC_INTRO_DEBUG
 function frozenTime(): number | null {
+  if (!INTRO_DEBUG) return null
   const v = new URLSearchParams(window.location.search).get('abertura')
   if (v === null) return null
   const n = Number(v)
@@ -86,6 +92,8 @@ function readConfig(): IntroConfig {
       const tier = detectTierInBrowser()
       if (tier !== 'none') {
         kind = 'canvas'
+        // o chunk da cena começa a baixar já (a espera no preto é curta)
+        void import('@/three/intro/DawnCanvas')
         const coarse = window.matchMedia('(pointer: coarse)').matches
         quality = coarse || tier === 'low' ? 'low' : 'high'
       }
@@ -118,34 +126,27 @@ function IntroRun({ still }: { still: StillPhoto }) {
     if (cfg && cfg.frozen === null) markIntroSeen(sessionStore())
   }, [cfg])
 
-  // relógio: avança com o tempo dos quadros (limitado), segura no preto até a cena ficar pronta
+  // relógio: avança com o tempo dos quadros, segura no preto até a cena ficar pronta e para
+  // sozinho em `done` (sai do gsap.ticker e cancela o tempo-limite)
+  const clockApi = useRef<IntroClock | null>(null)
   useEffect(() => {
-    if (!mode) return
-    const frozen = cfg?.frozen ?? null
-    let t = frozen ?? 0
-    let hold = 0
-    let fellBack = false
-    const tick = (_time: number, deltaMs: number) => {
-      if (frozen === null) {
-        const dt = Math.min(deltaMs / 1000, 0.1)
-        if (mode === 'full' && t >= DAWN_START && !ready.current && hold < MAX_HOLD) hold += dt
-        else t += dt
-        // a cena não ficou pronta a tempo: segue com o quadro estático
-        if (hold >= MAX_HOLD && !ready.current && !fellBack) {
-          fellBack = true
-          setFailed(true)
-        }
-      }
-      clock.current = t
-      dispatch({ type: 'tick', t, mode })
-    }
-    tick(0, 0)
-    gsap.ticker.add(tick)
-    const failsafe = frozen === null ? window.setTimeout(() => dispatch({ type: 'skip' }), FAILSAFE_MS) : 0
-    return () => {
-      gsap.ticker.remove(tick)
-      window.clearTimeout(failsafe)
-    }
+    if (!mode || !cfg) return
+    const c = startIntroClock({
+      mode,
+      frozen: cfg.frozen,
+      ticker: gsap.ticker,
+      isReady: () => ready.current,
+      onTick: (t) => {
+        clock.current = t
+        dispatch({ type: 'tick', t, mode })
+      },
+      onFallback: () => setFailed(true),
+      onFailsafe: () => dispatch({ type: 'skip' }),
+      maxHold: MAX_HOLD,
+      failsafeMs: FAILSAFE_MS,
+    })
+    clockApi.current = c
+    return () => c.stop()
   }, [mode, cfg])
 
   // fase compartilhada (maquete da #casa e botão do WhatsApp esperam por ela)
@@ -167,7 +168,17 @@ function IntroRun({ still }: { still: StillPhoto }) {
     return () => window.clearTimeout(id)
   }, [exit])
 
+  const lenisRef = useRef(lenis)
+  useEffect(() => {
+    lenisRef.current = lenis
+  }, [lenis])
+  const layer = useRef<HTMLDivElement>(null)
+
   const skip = useCallback((moveFocus: boolean) => {
+    // destrava a rolagem já neste evento: a mesma roda/toque que pula também rola a página
+    lenisRef.current?.start()
+    layer.current?.setAttribute('data-active', 'false')
+    clockApi.current?.stop()
     setSkipped(true)
     dispatch({ type: 'skip' })
     const a = document.activeElement
@@ -188,12 +199,14 @@ function IntroRun({ still }: { still: StillPhoto }) {
     const onWheel = () => skip(false)
     const onTouch = () => skip(false)
     window.addEventListener('keydown', onKey)
-    window.addEventListener('wheel', onWheel, { passive: true })
-    window.addEventListener('touchmove', onTouch, { passive: true })
+    // captura: roda antes do Lenis, que cancelaria o evento enquanto está parado
+    const opts = { passive: true, capture: true } as const
+    window.addEventListener('wheel', onWheel, opts)
+    window.addEventListener('touchmove', onTouch, opts)
     return () => {
       window.removeEventListener('keydown', onKey)
-      window.removeEventListener('wheel', onWheel)
-      window.removeEventListener('touchmove', onTouch)
+      window.removeEventListener('wheel', onWheel, opts)
+      window.removeEventListener('touchmove', onTouch, opts)
     }
   }, [done, skip])
 
@@ -220,6 +233,7 @@ function IntroRun({ still }: { still: StillPhoto }) {
       </button>
       <div
         id={INTRO_LAYER_ID}
+        ref={layer}
         className={s.layer}
         aria-hidden="true"
         data-live={mode ? 'true' : undefined}
@@ -230,7 +244,7 @@ function IntroRun({ still }: { still: StillPhoto }) {
         data-scene-ready={sceneReady}
       >
         <noscript>
-          <style>{`#${INTRO_LAYER_ID},[data-intro-skip]{display:none!important}`}</style>
+          <style>{`#${INTRO_LAYER_ID},[data-intro-skip]{display:none!important}html{overflow:visible!important}`}</style>
         </noscript>
         {mode && showScene && (
           <div className={s.scene}>

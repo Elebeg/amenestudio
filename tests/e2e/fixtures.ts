@@ -20,6 +20,12 @@ export const test = base.extend({
       await page.locator('[data-intro-root]').waitFor({ state: 'detached', timeout: 20_000 })
       return res
     }
+    const reload = page.reload.bind(page)
+    page.reload = async (options) => {
+      const res = await reload(options)
+      await page.locator('[data-intro-root]').waitFor({ state: 'detached', timeout: 20_000 })
+      return res
+    }
     await provide(page)
   },
 })

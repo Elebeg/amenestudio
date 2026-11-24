@@ -12,7 +12,7 @@ type Props = {
 }
 
 const FALL = 0.82 // queda (s), acelerando: peso
-const SPREAD = 0.55 // afastamento extra entre as letras durante a queda (em em)
+const SPREAD = 0.2 // afastamento extra entre as letras durante a queda (em em)
 
 /**
  * As letras A·M·E·N·E: HTML (aria-hidden, neutras para SEO), Cormorant.

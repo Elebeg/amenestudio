@@ -7,7 +7,7 @@ import { useProgress } from '@react-three/drei'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import { ApartmentModel } from '@/three/apartment/ApartmentModel'
 import { APARTMENT, footprint } from '@/three/apartment/layout'
-import { dawnAt, lerp } from '@/lib/dawn'
+import { dawnAt, lerp, mixHex } from '@/lib/dawn'
 
 export type DawnCanvasProps = {
   /** relógio da abertura em segundos (escrito pelo Intro a cada quadro) */
@@ -48,8 +48,14 @@ const LOOK_TO = new THREE.Vector3(LIVING.x0 + 0.1, 1.24, LIVING.z0 + 1.05)
  * fechada; aqui o céu e o ambiente iluminariam demais e achatariam a luz rasante do sol.
  */
 const SUN_GAIN = 1.3
-const HEMI_GAIN = 0.42
-const ENV_GAIN = 0.4
+/**
+ * No começo o preenchimento fica baixo (luz rasante e contraste); com o dia claro ele sobe até os
+ * valores da maquete, para a pedra chegar ao bege-acinzentado claro da foto (IMG_4759).
+ */
+const HEMI_GAIN = [0.42, 1.1] as const
+const ENV_GAIN = [0.4, 1.0] as const
+const EXPOSURE_END = 1.1
+const GROUND = { night: 0x8a7560, day: 0xb9a58f }
 const SUN_TARGET = new THREE.Vector3(...toPlan(-0.5, 1, -1.8))
 
 const DUST_N = { high: 420, low: 220 }
@@ -236,11 +242,12 @@ function DawnRig({ clock, start, duration, quality, onReady }: Omit<DawnCanvasPr
       soften(s.color.setHex(d.sunColor))
     }
     if (hemi.current) {
-      hemi.current.intensity = d.hemiIntensity * HEMI_GAIN
+      hemi.current.intensity = d.hemiIntensity * lerp(HEMI_GAIN[0], HEMI_GAIN[1], d.ramp)
+      hemi.current.groundColor.setHex(mixHex(GROUND.night, GROUND.day, d.ramp))
       hemi.current.color.setHex(d.hemiSky)
     }
-    gl.toneMappingExposure = d.exposure
-    scene.environmentIntensity = d.env * ENV_GAIN
+    gl.toneMappingExposure = lerp(0.5, EXPOSURE_END, d.ramp)
+    scene.environmentIntensity = d.env * lerp(ENV_GAIN[0], ENV_GAIN[1], d.ramp)
     applyOwn(own, d, t, tmp.current)
 
     camera.position.lerpVectors(CAM_FROM, CAM_TO, d.dolly)
