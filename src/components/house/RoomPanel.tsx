@@ -70,7 +70,8 @@ export function RoomPanel({ room, total, projectHref, focusOnOpen, onClose, esca
           </figure>
         ))}
       </div>
-      <Link href={projectHref} className={s.panelLink}>
+      {/* nome acessível distinto do link da coluna ("Ver projeto completo"), que fica na mesma página */}
+      <Link href={projectHref} className={s.panelLink} aria-label={`Ver projeto completo — ${room.nome}`}>
         Ver projeto completo
       </Link>
     </aside>

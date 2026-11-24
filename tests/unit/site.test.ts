@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { site } from '@/config/site'
+import { resolveSiteUrl, site } from '@/config/site'
 
 describe('site config', () => {
   it('whatsapp number is null or digits only with country code', () => {
@@ -28,5 +28,24 @@ describe('textos institucionais (placeholder)', () => {
     expect(site.estudio.texto.length).toBeGreaterThan(0)
     expect(site.estudio.cidade.length).toBeGreaterThan(0)
     expect(site.estudio.placeholder).toBe(true)
+  })
+})
+
+describe('resolveSiteUrl', () => {
+  it('NEXT_PUBLIC_SITE_URL vence tudo (sem barra final)', () => {
+    expect(
+      resolveSiteUrl({ NEXT_PUBLIC_SITE_URL: 'https://amene.arq.br/', VERCEL_PROJECT_PRODUCTION_URL: 'amene.vercel.app' }),
+    ).toBe('https://amene.arq.br')
+  })
+  it('sem a variável explícita, usa o domínio de produção da Vercel com https', () => {
+    expect(resolveSiteUrl({ VERCEL_PROJECT_PRODUCTION_URL: 'amene.vercel.app' })).toBe('https://amene.vercel.app')
+  })
+  it('sem nada (ou vazio), cai em localhost', () => {
+    expect(resolveSiteUrl({})).toBe('http://localhost:3000')
+    expect(resolveSiteUrl({ NEXT_PUBLIC_SITE_URL: '', VERCEL_PROJECT_PRODUCTION_URL: '' })).toBe('http://localhost:3000')
+  })
+  it('site.url é uma URL absoluta válida', () => {
+    expect(() => new URL(site.url)).not.toThrow()
+    expect(site.url.endsWith('/')).toBe(false)
   })
 })
