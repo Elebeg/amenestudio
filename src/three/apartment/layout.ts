@@ -1,17 +1,29 @@
 import type { RoomId } from '@/content/projetos'
 
 /**
- * Disposição ESTIMADA do apartamento (a planta baixa ainda não chegou).
- * Plano XZ em metros, origem no centro da planta, +x = leste, +z = sul.
+ * Planta ESTIMADA do apartamento (a planta baixa oficial ainda não chegou), desenhada como um
+ * apartamento alto padrão real, com três zonas (social, íntima e serviço). Plano XZ em metros,
+ * origem no centro da planta, +x = leste, +z = sul. Fachada principal ao norte, com varanda
+ * em balanço na frente do jantar e do living. 17,2 × 11,0 m = 189 m² privativos + varanda.
  *
- *   z ─ norte ─────────────────────────────────────────────
- *     │  cozinha + jantar   │      living       │  hall    │
- *     │      7,4 × 5,6      │     6,0 × 5,6     │  ┌lavabo │
- *     ├───── pedra contínua (churrasqueira → parede da TV)─┤
- *     │                corredor íntimo 1,2 m               │
- *     ├────────┬────────┬────────┬────────┬────────────────┤
- *     │ suíte  │solteiro│ ripada │escrivan│ espelho        │
- *   z ─ sul ───────────────────────────────────────────────
+ *  x: 0        5,0        9,8        13,2            17,2
+ *     ┌··········varanda···········┐
+ *  0  ┌─────────┬──────────┬───────────┬───────────────┐
+ *     │ jantar ▓│▓ TV      │ suíte     │ suíte casal   │
+ *     │ churr. ▓│▓  sofá   │ ripada    │ 4,0 × 4,2     │
+ *     │        ▓│▓         │ 3,4 × 3,8 │               │
+ *     │  ilha   ·  vão     ├──┬────────┼──────┬────────┤ 3,8 / 4,2
+ *     │ cozinha ·          │ps│banho R │closet│banho C │
+ *     │ bancada │ ·vão·    ├──┴────────┤      │        │ 5,8
+ *     ├───┬─────┤hall│ circulação ────┴──────┴────────┤ 7,0
+ *     │ser│desp.│    ├─────┬────────┬───┬──────────────┤
+ *     │viç├─────┤    │lavab│solteiro│ps │  quarto      │
+ *     │o  │wc   │    ├─────┤3,2×4,0 ├───┤  espelho     │
+ *     │   │     │    │wc   │        │wc │  3,2 × 4,0   │
+ * 11  └───┴─────┴─⇧──┴─────┴────────┴───┴──────────────┘
+ *              entrada social
+ *
+ * ▓ pedra natural de dupla face na divisa jantar/living: churrasqueira de um lado, TV do outro.
  */
 
 export type Rect = { x0: number; z0: number; x1: number; z1: number }
@@ -26,8 +38,12 @@ export type Opening = {
   kind: 'porta' | 'janela' | 'vao'
 }
 export type RoomLayout = { id: RoomId; rect: Rect; openings: Opening[]; labelAt: [number, number, number] }
-/** Área de circulação (não é um cômodo do projeto): só piso e aberturas externas. */
-export type AreaLayout = { name: string; rect: Rect; openings: Opening[] }
+/**
+ * Área que não é um cômodo do projeto (não clicável). Áreas fechadas (banho, closet, serviço)
+ * ganham paredes em todo o perímetro; hall, circulação e passagens são abertos entre si.
+ */
+export type AreaKind = 'hall' | 'circulacao' | 'banho' | 'closet' | 'servico' | 'varanda'
+export type AreaLayout = { name: string; kind: AreaKind; rect: Rect; openings: Opening[] }
 
 /** Peça de parede: caixa alinhada aos eixos. */
 export type Box = { center: [number, number, number]; size: [number, number, number] }
@@ -35,8 +51,8 @@ export type Box = { center: [number, number, number]; size: [number, number, num
 const H = 2.7
 const T = 0.12
 // a planta foi desenhada com origem no canto noroeste; deslocamos para centralizar
-const OX = -8.5
-const OZ = -5.2
+const OX = -8.6
+const OZ = -5.5
 
 const R = (x0: number, z0: number, x1: number, z1: number): Rect => ({
   x0: x0 + OX,
@@ -53,29 +69,53 @@ const janela = (wall: Side, center: number, width: number, y0 = 0, y1 = 2.4): Op
   y1,
   kind: 'janela',
 })
+/** janela alta de banheiro */
+const basculante = (wall: Side, center: number, width = 0.6): Opening => janela(wall, center, width, 1.6, 2.2)
 const vao = (wall: Side, center: number, width: number, y1 = H): Opening => ({ wall, center, width, y0: 0, y1, kind: 'vao' })
 const label = (r: Rect): [number, number, number] => [(r.x0 + r.x1) / 2, H + 0.25, (r.z0 + r.z1) / 2]
 const room = (id: RoomId, rect: Rect, openings: Opening[]): RoomLayout => ({ id, rect, openings, labelAt: label(rect) })
+const area = (name: string, kind: AreaKind, rect: Rect, openings: Opening[] = []): AreaLayout => ({ name, kind, rect, openings })
 
 export const APARTMENT = {
   height: H,
   wallThickness: T,
   rooms: [
-    room('cozinha', R(0, 0, 7.4, 5.6), [janela('w', 3.5, 2.8), vao('e', 3.05, 5.1)]),
-    room('living', R(7.4, 0, 13.4, 5.6), [janela('n', 3.0, 4.2), vao('w', 3.05, 5.1), vao('e', 1.0, 1.4, 2.4)]),
-    room('lavabo', R(13.4, 3.8, 14.9, 5.6), [porta('e', 0.6, 0.7)]),
-    room('suite-casal', R(0, 6.8, 3.8, 10.4), [porta('n', 3.0), janela('s', 1.7, 2.4)]),
-    room('quarto-solteiro', R(3.8, 6.8, 7.2, 10.4), [porta('n', 0.6), janela('s', 1.9, 2.2)]),
-    room('suite-ripada', R(7.2, 6.8, 10.6, 10.4), [porta('n', 0.6), janela('s', 1.9, 2.2)]),
-    room('quarto-escrivaninha', R(10.6, 6.8, 13.8, 10.4), [porta('n', 0.6), janela('s', 1.8, 2.0)]),
-    room('quarto-espelho', R(13.8, 6.8, 17.0, 10.4), [porta('n', 0.6), janela('s', 1.8, 2.0)]),
+    // social: jantar + cozinha num retângulo fundo; a divisa leste é a pedra (z 0–3,4) e o vão para o living
+    room('cozinha', R(0, 0, 5.0, 7.0), [
+      janela('n', 2.5, 4.6),
+      vao('e', 4.55, 2.1),
+      janela('w', 4.9, 1.4, 1.0, 2.2),
+      porta('s', 0.5),
+    ]),
+    room('living', R(5.0, 0, 9.8, 5.8), [janela('n', 2.4, 4.2), vao('w', 4.55, 2.1), vao('s', 1.4, 2.0, 2.4)]),
+    room('lavabo', R(7.6, 7.0, 9.2, 8.8), [porta('w', 0.5, 0.7)]),
+    // íntima: portas de entrada em quatro linhas diferentes (passagens, closet, circulação)
+    room('suite-ripada', R(9.8, 0, 13.2, 3.8), [janela('n', 1.7, 2.2), porta('s', 0.7), porta('s', 2.6, 0.7)]),
+    room('suite-casal', R(13.2, 0, 17.2, 4.2), [janela('n', 2.0, 2.6), janela('e', 2.9, 0.9, 0.9, 2.2), porta('s', 0.6)]),
+    room('quarto-solteiro', R(9.2, 7.0, 12.4, 11.0), [janela('s', 1.7, 2.0), porta('n', 0.5), porta('w', 3.4, 0.7)]),
+    room('quarto-espelho', R(14.0, 7.0, 17.2, 11.0), [janela('s', 1.6, 2.0), porta('w', 1.0), porta('w', 3.4, 0.7)]),
   ] as RoomLayout[],
   areas: [
-    { name: 'hall', rect: R(13.4, 0, 17.0, 3.8), openings: [porta('e', 1.9, 1.0)] },
-    { name: 'hall-lavabo', rect: R(14.9, 3.8, 17.0, 5.6), openings: [] },
-    { name: 'corredor', rect: R(0, 5.6, 17.0, 6.8), openings: [] },
+    area('hall', 'hall', R(5.0, 5.8, 7.6, 11.0), [porta('s', 1.3, 1.0)]),
+    area('circulacao', 'circulacao', R(7.6, 5.8, 13.2, 7.0)),
+    area('passagem-ripada', 'circulacao', R(9.8, 3.8, 11.4, 5.8)),
+    area('passagem-espelho', 'circulacao', R(12.4, 7.0, 14.0, 8.4)),
+    area('banho-ripada', 'banho', R(11.4, 3.8, 13.2, 5.8)),
+    area('closet-casal', 'closet', R(13.2, 4.2, 15.2, 7.0), [porta('w', 2.2), porta('e', 1.0, 0.7)]),
+    area('banho-casal', 'banho', R(15.2, 4.2, 17.2, 7.0), [basculante('e', 1.6, 0.8)]),
+    area('banho-solteiro', 'banho', R(7.6, 8.8, 9.2, 11.0), [basculante('s', 0.8)]),
+    area('banho-espelho', 'banho', R(12.4, 8.4, 14.0, 11.0), [basculante('s', 0.8)]),
+    // serviço, atrás da cozinha
+    area('servico', 'servico', R(0, 7.0, 3.0, 11.0), [janela('s', 1.1, 1.2, 1.0, 2.2), porta('s', 2.4)]),
+    area('despensa', 'servico', R(3.0, 7.0, 5.0, 9.2), [porta('w', 1.1, 0.7)]),
+    area('banho-servico', 'banho', R(3.0, 9.2, 5.0, 11.0), [porta('w', 0.9, 0.7), basculante('s', 1.2)]),
   ] as AreaLayout[],
+  /** Varanda em balanço na fachada norte (fora do retângulo da planta): piso e guarda-corpo de vidro. */
+  varanda: area('varanda', 'varanda', R(0, -1.8, 9.8, 0)),
 } as const
+
+/** Áreas cercadas por paredes em todo o perímetro. */
+export const ENCLOSED_AREAS: ReadonlySet<AreaKind> = new Set<AreaKind>(['banho', 'closet', 'servico'])
 
 export type Apartment = typeof APARTMENT
 
@@ -180,7 +220,8 @@ function cutWall(axis: 'x' | 'z', coord: number, s: number, e: number, openings:
 export function interiorWallPieces(a: Apartment): Box[] {
   const f = footprint(a)
   const lines = new Map<string, { axis: 'x' | 'z'; coord: number; spans: Array<[number, number]>; openings: AbsOpening[] }>()
-  for (const r of a.rooms) {
+  const walled = [...a.rooms, ...a.areas.filter((x) => ENCLOSED_AREAS.has(x.kind))]
+  for (const r of walled) {
     for (const side of SIDES) {
       const edge = edgeOf(r.rect, side)
       if (boundarySide(f, edge)) continue
@@ -189,6 +230,14 @@ export function interiorWallPieces(a: Apartment): Box[] {
       line.spans.push([edge.s, edge.e])
       for (const o of r.openings) if (o.wall === side) line.openings.push(absOpening(r.rect, o))
       lines.set(key, line)
+    }
+  }
+  // aberturas de áreas abertas (hall, circulação) que caem numa linha de parede já existente
+  for (const r of a.areas) {
+    if (ENCLOSED_AREAS.has(r.kind)) continue
+    for (const o of r.openings) {
+      const edge = edgeOf(r.rect, o.wall)
+      lines.get(`${edge.axis}:${edge.coord.toFixed(3)}`)?.openings.push(absOpening(r.rect, o))
     }
   }
   const out: Box[] = []

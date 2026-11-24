@@ -7,7 +7,6 @@ import { Lavabo } from './Lavabo'
 import { SuiteCasal } from './SuiteCasal'
 import { QuartoSolteiro } from './QuartoSolteiro'
 import { SuiteRipada } from './SuiteRipada'
-import { QuartoEscrivaninha } from './QuartoEscrivaninha'
 import { QuartoEspelho } from './QuartoEspelho'
 
 export const ROOM_COMPONENTS: Record<RoomId, ComponentType<{ room: RoomLayout }>> = {
@@ -17,6 +16,5 @@ export const ROOM_COMPONENTS: Record<RoomId, ComponentType<{ room: RoomLayout }>
   'suite-casal': SuiteCasal,
   'quarto-solteiro': QuartoSolteiro,
   'suite-ripada': SuiteRipada,
-  'quarto-escrivaninha': QuartoEscrivaninha,
   'quarto-espelho': QuartoEspelho,
 }
