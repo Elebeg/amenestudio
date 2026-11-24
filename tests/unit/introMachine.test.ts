@@ -4,6 +4,7 @@ import {
   INTRO_SEEN_KEY,
   introMode,
   introReducer,
+  introSceneKind,
   introTimeline,
   letterSchedule,
   markIntroSeen,
@@ -114,5 +115,24 @@ describe('sessionStorage', () => {
     expect(readIntroSeen(broken)).toBe(false)
     expect(() => markIntroSeen(broken)).not.toThrow()
     expect(readIntroSeen(undefined)).toBe(false)
+  })
+})
+
+describe('introSceneKind', () => {
+  const base = { mode: 'full' as const, hasVideo: false, tier: 'high' as const, coarsePointer: false }
+  it('canvas só no modo full, aparelho high, sem toque', () => expect(introSceneKind(base)).toBe('canvas'))
+  it('toque (ponteiro grosso) fica no quadro estático, mesmo em aparelho forte', () =>
+    expect(introSceneKind({ ...base, coarsePointer: true })).toBe('still'))
+  it('tier low ou none fica no quadro estático', () => {
+    expect(introSceneKind({ ...base, tier: 'low' })).toBe('still')
+    expect(introSceneKind({ ...base, tier: 'none' })).toBe('still')
+  })
+  it('vídeo (Fase 2) vence o canvas, inclusive no toque', () => {
+    expect(introSceneKind({ ...base, hasVideo: true })).toBe('video')
+    expect(introSceneKind({ ...base, hasVideo: true, coarsePointer: true, tier: 'low' })).toBe('video')
+  })
+  it('short e reduced: sempre o quadro estático', () => {
+    expect(introSceneKind({ ...base, mode: 'short' })).toBe('still')
+    expect(introSceneKind({ ...base, mode: 'reduced', hasVideo: true })).toBe('still')
   })
 })

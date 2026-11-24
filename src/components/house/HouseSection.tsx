@@ -12,7 +12,7 @@ import { RoomPanel, type PanelRoom } from './RoomPanel'
 import { SceneBoundary } from './SceneBoundary'
 import { HouseFallback } from './HouseFallback'
 import { detectTierInBrowser, type Tier } from '@/lib/quality'
-import { useIntroReleased } from '@/components/intro/introStore'
+import { useIntroGone } from '@/components/intro/introStore'
 import { APARTMENT } from '@/three/apartment/layout'
 import s from './house.module.css'
 
@@ -63,8 +63,9 @@ function useMedia(query: string, fallback = false): boolean {
 export function HouseSection({ projeto, rooms, cover, coverAlt, stageClassName, infoClassName, eyebrow, h2ClassName, linkClassName }: Props) {
   const [state, setState] = useState<HouseState>({ view: 'overview', lighting: 'manha', panelOpen: false })
   const [mount, setMount] = useState(false)
-  // a maquete só começa a carregar no clarão da abertura (ou quando não há abertura)
-  const introReleased = useIntroReleased()
+  // a maquete só começa a carregar quando a camada da abertura já saiu do DOM (ou não há
+  // abertura): nunca dois contextos WebGL ao mesmo tempo (amanhecer + maquete)
+  const introGone = useIntroGone()
   // null só no servidor/hidratação; no cliente a sonda barata roda logo após a montagem
   const tier = useSyncExternalStore<Tier | null>(() => () => {}, detectTierInBrowser, () => null)
   // o canvas caiu (chunk, contexto WebGL ou exceção do R3F): volta para a capa estática
@@ -102,12 +103,12 @@ export function HouseSection({ projeto, rooms, cover, coverAlt, stageClassName, 
 
   // carrega o canvas quando o navegador estiver ocioso (a capa é o LCP), depois da abertura
   useEffect(() => {
-    if (!tier || tier === 'none' || !introReleased) return
+    if (!tier || tier === 'none' || !introGone) return
     const ric = window.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 200))
     const cic = window.cancelIdleCallback ?? window.clearTimeout
     const id = ric(() => setMount(true), { timeout: 1500 })
     return () => cic(id)
-  }, [tier, introReleased])
+  }, [tier, introGone])
 
   // fora da tela: sem auto-rotação; largura do palco para o deslocamento do painel
   useEffect(() => {
@@ -178,31 +179,21 @@ export function HouseSection({ projeto, rooms, cover, coverAlt, stageClassName, 
 
   return (
     <>
-      <div className={`${stageClassName} ${s.stage}`} data-casa-stage ref={stage} data-ready={ready} data-lighting={state.lighting}>
+      <div className={`${stageClassName} ${s.stage}`} data-casa-stage ref={stage} data-tier={tier ?? undefined} data-ready={ready} data-lighting={state.lighting}>
         <div className={s.viewport}>
-          {noCanvas ? (
-            <Image
-              className={s.fbImage}
-              src="/maquete-fallback.webp"
-              width={1600}
-              height={1000}
-              alt="Planta do apartamento em maquete: visão geral dos sete ambientes"
-              sizes="(min-width: 900px) 60vw, 100vw"
-            />
-          ) : (
-            <Image
-              className={s.cover}
-              src={cover.src}
-              width={cover.width}
-              height={cover.height}
-              placeholder="blur"
-              blurDataURL={cover.blurDataURL}
-              alt={coverAlt}
-              sizes="(min-width: 900px) 60vw, 100vw"
-              preload
-              fetchPriority="high"
-            />
-          )}
+          {/* a capa é o LCP: o mesmo elemento em todos os níveis (sem WebGL ela simplesmente fica) */}
+          <Image
+            className={s.cover}
+            src={cover.src}
+            width={cover.width}
+            height={cover.height}
+            placeholder="blur"
+            blurDataURL={cover.blurDataURL}
+            alt={coverAlt}
+            sizes="(min-width: 900px) 60vw, 100vw"
+            preload
+            fetchPriority="high"
+          />
           {live && (
             <div className={s.canvasLayer} data-house-canvas>
               <SceneBoundary onError={onFail}>
