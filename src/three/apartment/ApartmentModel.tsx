@@ -10,12 +10,16 @@ import {
   exteriorWalls,
   footprint,
   interiorWallPieces,
+  type AreaKind,
   type Box,
   type ExteriorWall,
+  type Rect,
 } from './layout'
+import { areaFixtures } from './fixtures'
 import { applyLighting, createInstanceMaterials, getMaterials, type Lighting } from './materials'
 import { ApartmentMaterialsContext, useMats } from './materialsContext'
 import { ROOM_COMPONENTS } from './rooms'
+import { Plant } from './parts'
 
 export type ApartmentSource =
   | { kind: 'procedural' }
@@ -48,7 +52,18 @@ function GlbApartment({ url }: { url: string }) {
 
 const unitBox = new THREE.BoxGeometry(1, 1, 1)
 const CAP = 0.006
-const BEDROOM_FLOOR = new Set(['suite-casal', 'quarto-solteiro', 'suite-ripada', 'quarto-escrivaninha', 'quarto-espelho'])
+const BEDROOM_FLOOR = new Set(['suite-casal', 'quarto-solteiro', 'suite-ripada', 'quarto-espelho'])
+type FloorKind = 'porcelanato' | 'vinilico' | 'banho' | 'deck'
+/** Piso por área: porcelanato no hall e no serviço, amadeirado na circulação íntima e no closet. */
+const AREA_FLOOR: Record<AreaKind, FloorKind> = {
+  hall: 'porcelanato',
+  circulacao: 'vinilico',
+  closet: 'vinilico',
+  banho: 'banho',
+  servico: 'porcelanato',
+  varanda: 'deck',
+}
+const RAIL_H = 1.1
 
 /** Caixas alinhadas aos eixos num único InstancedMesh (geometria unitária escalada). */
 function BoxInstances({
@@ -109,6 +124,22 @@ function windowsOf(wall: ExteriorWall) {
   return { glass, frames }
 }
 
+/** Guarda-corpo de vidro da varanda (frente e laterais), com corrimão metálico. */
+function railingOf(v: Rect) {
+  const glass: Box[] = []
+  const frames: Box[] = []
+  const y = RAIL_H / 2
+  const zf = v.z0 + 0.03
+  glass.push({ center: [(v.x0 + v.x1) / 2, y, zf], size: [v.x1 - v.x0, RAIL_H, 0.012] })
+  frames.push({ center: [(v.x0 + v.x1) / 2, RAIL_H, zf], size: [v.x1 - v.x0 + 0.04, 0.04, 0.05] })
+  for (const x of [v.x0 + 0.03, v.x1 - 0.03]) {
+    const d = v.z1 - zf
+    glass.push({ center: [x, y, zf + d / 2], size: [0.012, RAIL_H, d] })
+    frames.push({ center: [x, RAIL_H, zf + d / 2], size: [0.05, 0.04, d] })
+  }
+  return { glass, frames }
+}
+
 /**
  * Orçamento de draw calls: peças pequenas (< 0,6 m na maior dimensão) não projetam sombra.
  * O contato delas com o piso fica a cargo da oclusão de ambiente (N8AO, Task 10).
@@ -161,11 +192,15 @@ function ProceduralApartment({ lighting }: { lighting: Lighting }) {
         boards: boards.filter((b) => b.side === w.side),
         ...windowsOf(w),
       })),
+      rail: railingOf(APARTMENT.varanda.rect),
+      fixtures: areaFixtures(APARTMENT).byMaterial,
     }
   }, [])
 
   const { f, H } = data
   const T = APARTMENT.wallThickness
+  const v = APARTMENT.varanda.rect
+  const floorMaterial: Record<FloorKind, THREE.Material> = { porcelanato: m.porcelanato, vinilico: m.vinilico, banho: m.pedraBege, deck: m.freijo }
 
   return (
     <ApartmentMaterialsContext.Provider value={mats}>
@@ -179,12 +214,23 @@ function ProceduralApartment({ lighting }: { lighting: Lighting }) {
         receiveShadow
       />
 
-      {/* pisos: porcelanato na área social e circulação, vinílico amadeirado nos quartos */}
-      {[...APARTMENT.rooms.map((r) => ({ key: r.id, rect: r.rect, wood: BEDROOM_FLOOR.has(r.id) })), ...APARTMENT.areas.map((a) => ({ key: a.name, rect: a.rect, wood: false }))].map(
-        ({ key, rect, wood }) => (
-          <FloorPlate key={key} rect={rect} material={wood ? m.vinilico : m.porcelanato} />
-        ),
-      )}
+      {/* laje da varanda em balanço */}
+      <mesh
+        geometry={unitBox}
+        material={m.base}
+        position={[(v.x0 + v.x1) / 2, -0.16, (v.z0 + v.z1) / 2 - 0.075]}
+        scale={[v.x1 - v.x0 + 0.3, 0.3, v.z1 - v.z0 + 0.15]}
+        receiveShadow
+      />
+
+      {/* pisos: porcelanato na área social, amadeirado nos quartos e na circulação íntima,
+          pedra bege nos banheiros, deck na varanda */}
+      {[
+        ...APARTMENT.rooms.map((r) => ({ key: r.id, rect: r.rect, kind: (BEDROOM_FLOOR.has(r.id) ? 'vinilico' : 'porcelanato') as FloorKind })),
+        ...[...APARTMENT.areas, APARTMENT.varanda].map((a) => ({ key: a.name, rect: a.rect, kind: AREA_FLOOR[a.kind] })),
+      ].map(({ key, rect, kind }) => (
+        <FloorPlate key={key} rect={rect} material={floorMaterial[kind]} />
+      ))}
 
       {/* paredes internas, tampas de corte e rodapés */}
       <BoxInstances name="walls-interior" boxes={data.interior} material={m.gesso} />
@@ -201,6 +247,13 @@ function ProceduralApartment({ lighting }: { lighting: Lighting }) {
             <BoxInstances boxes={boards} material={wm.board} cast={false} />
             <BoxInstances boxes={frames} material={wm.frame} />
             <BoxInstances boxes={glass} material={wm.glass} cast={false} receive={false} />
+            {wall.side === 'n' && (
+              <>
+                {/* guarda-corpo de vidro da varanda: some junto com a fachada norte */}
+                <BoxInstances boxes={data.rail.glass} material={wm.glass} cast={false} receive={false} />
+                <BoxInstances boxes={data.rail.frames} material={wm.frame} />
+              </>
+            )}
           </group>
         )
       })}
@@ -211,8 +264,17 @@ function ProceduralApartment({ lighting }: { lighting: Lighting }) {
         return <Room key={room.id} room={room} />
       })}
 
-      {/* hall: aparador e planta junto à entrada */}
+      {/* banheiros, serviço, despensa e closet: um InstancedMesh por material */}
+      <BoxInstances boxes={data.fixtures.laca ?? []} material={m.laca} />
+      <BoxInstances boxes={data.fixtures.lacaCinza ?? []} material={m.lacaCinza} cast={false} />
+      <BoxInstances boxes={data.fixtures.quartzo ?? []} material={m.quartzo} cast={false} />
+      <BoxInstances boxes={data.fixtures.espelho ?? []} material={m.espelho} cast={false} />
+      <BoxInstances boxes={data.fixtures.ceramica ?? []} material={m.ceramica} cast={false} />
+      <BoxInstances boxes={data.fixtures.vidro ?? []} material={m.vidro} cast={false} receive={false} />
+
+      {/* hall: aparador e espelho junto à entrada; varanda com plantas */}
       <HallFurniture />
+      <VarandaFurniture />
       <group name="ceiling-height" userData={{ height: H }} />
     </group>
     </ApartmentMaterialsContext.Provider>
@@ -242,16 +304,30 @@ function FloorPlate({ rect, material }: { rect: { x0: number; z0: number; x1: nu
   )
 }
 
-/** Hall de entrada: aparador suspenso de freijó com espelho e planta (área de circulação). */
+/** Hall de entrada: aparador suspenso de freijó com espelho na parede oeste (área de circulação). */
 function HallFurniture() {
   const m = useMats()
-  const hall = APARTMENT.areas.find((a) => a.name === 'hall')!
-  const { x1, z0 } = hall.rect
+  const hall = APARTMENT.areas.find((a) => a.kind === 'hall')!
+  const { x0, z0 } = hall.rect
+  const W = APARTMENT.wallThickness / 2
   return (
-    <group position={[x1, 0, z0]}>
-      <mesh geometry={unitBox} material={m.freijo} position={[-0.2, 0.82, 0.75]} scale={[0.38, 0.12, 1.3]} castShadow receiveShadow />
-      <mesh geometry={unitBox} material={m.espelho} position={[-0.012, 1.55, 0.75]} scale={[0.01, 0.9, 0.7]} />
-      <mesh geometry={unitBox} material={m.vasoTerracota} position={[-0.2, 0.98, 0.45]} scale={[0.14, 0.2, 0.14]} castShadow />
+    <group position={[x0 + W, 0, z0]}>
+      <mesh geometry={unitBox} material={m.freijo} position={[0.2, 0.82, 3.0]} scale={[0.38, 0.12, 1.4]} castShadow receiveShadow />
+      <mesh geometry={unitBox} material={m.espelho} position={[0.012, 1.55, 3.0]} scale={[0.01, 0.9, 0.8]} />
+      <mesh geometry={unitBox} material={m.vasoTerracota} position={[0.2, 0.98, 2.6]} scale={[0.14, 0.2, 0.14]} castShadow />
+    </group>
+  )
+}
+
+/** Varanda: duas plantas grandes e um banco de freijó junto ao guarda-corpo. */
+function VarandaFurniture() {
+  const m = useMats()
+  const { x0, z0, x1 } = APARTMENT.varanda.rect
+  return (
+    <group position={[x0, 0, z0]}>
+      <Plant p={[0.5, 0, 0.5]} s={1.5} pot={m.vasoTerracota} leaf={m.folha} />
+      <Plant p={[x1 - x0 - 0.5, 0, 0.55]} s={1.3} pot={m.ceramica} leaf={m.folha} />
+      <mesh geometry={unitBox} material={m.freijo} position={[(x1 - x0) / 2 + 1.2, 0.22, 0.4]} scale={[2.2, 0.44, 0.45]} castShadow receiveShadow />
     </group>
   )
 }

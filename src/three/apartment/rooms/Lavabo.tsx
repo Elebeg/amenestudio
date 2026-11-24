@@ -8,7 +8,8 @@ import type { RoomLayout } from '../layout'
 /**
  * Lavabo (IMG_4783): parede de seixos, bancada orgânica de pedra com cuba-bacia,
  * espelho orgânico de moldura larga e pendentes de palha.
- * Local: x 0→1,5, z 0→1,8. Bancada na parede oeste.
+ * Local: x 0→1,6, z 0→1,8. A porta fica na parede oeste (para o hall), então o conjunto
+ * é desenhado com a bancada "na parede oeste" e espelhado em x: bancada na parede leste.
  */
 
 // bancada em planta: x = distância da parede, y = −z (ver rotação abaixo)
@@ -25,11 +26,12 @@ const COUNTER: Array<[number, number]> = [
 
 export function Lavabo({ room }: { room: RoomLayout }) {
   const m = useMats()
-  const { x0, z0 } = room.rect
-  const Wf = 0.06 // face da parede oeste
+  const { x0, z0, x1 } = room.rect
+  const Wf = 0.06 // face da parede (no referencial espelhado)
 
   return (
     <RoomGroup x0={x0} z0={z0}>
+      <group position={[x1 - x0, 0, 0]} scale={[-1, 1, 1]}>
       <C s={[0.03, 2.7, 1.68]} p={[Wf + 0.015, 1.35, 0.9]} m={m.seixos} cast={false} />
       <Extruded id="lavabo-counter" shape={() => smoothShape(COUNTER)} depth={0.1} bevel={0.015} p={[Wf + 0.03, 0.8, 0]} rot={[-Math.PI / 2, 0, 0]} m={m.pedraBege} />
       <Lathe
@@ -56,6 +58,7 @@ export function Lavabo({ room }: { room: RoomLayout }) {
       <Plant p={[0.3, 0, 0.6]} s={0.62} pot={m.pedraBege} leaf={m.folha} />
       {/* bacia sanitária suspensa */}
       <B s={[0.37, 0.36, 0.56]} r={0.14} p={[1.02, 0.06, 1.45]} m={m.ceramica} />
+      </group>
     </RoomGroup>
   )
 }
