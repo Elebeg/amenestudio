@@ -200,6 +200,7 @@ export function HouseSection({ projeto, rooms, cover, coverAlt, stageClassName, 
               alt={coverAlt}
               sizes="(min-width: 900px) 60vw, 100vw"
               preload
+              fetchPriority="high"
             />
           )}
           {live && (

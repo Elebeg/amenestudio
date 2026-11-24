@@ -44,7 +44,7 @@ export type StillPhoto = { src: string; width: number; height: number }
 
 /** Fundo CSS (image-set 1x/2x) a partir da otimização do next/image. */
 function coverBackground(photo: StillPhoto): string {
-  const width = 1600
+  const width = 1080
   const height = Math.round((photo.height / photo.width) * width)
   const { props } = getImageProps({ src: photo.src, width, height, alt: '', quality: 70 })
   const set = (props.srcSet ?? '').split(', ').filter(Boolean).map((entry) => {
